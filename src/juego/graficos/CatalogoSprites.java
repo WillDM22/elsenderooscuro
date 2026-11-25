@@ -7,10 +7,17 @@ public final class CatalogoSprites {
 
     // Nombres de los sprites disponibles
 
-    public static final String JUGADOR = "jugador";
+    public static final String CABALLERO = "caballero";
+    public static final String MAGO = "mago";
+    public static final String DRUIDA = "druida";
+    public static final String LADRON = "ladron";
     public static final String ESQUELETO = "esqueleto";
     public static final String LOBO = "lobo";
     public static final String BRUJO = "brujo";
+    public static final String GOBLIN = "goblin";
+    public static final String ARANA = "arana";
+    public static final String GOLEM = "golem";
+    public static final String ESPECTRO = "espectro";
     public static final String REY = "rey";
     public static final String CALAVERA = "calavera";
     public static final String INTERROGACION = "interrogacion";
@@ -24,10 +31,10 @@ public final class CatalogoSprites {
     public static final String POCION = "pocion";
 
     // Cantidad total de sprites
-    public static final int CANTIDAD = 15;
+    public static final int CANTIDAD = 22;
 
-    // jugador
-    private static final String DIBUJO_JUGADOR =
+    // caballero
+    private static final String DIBUJO_CABALLERO =
             "..........KLK.../" +
             "......KKKK.KLK../" +
             ".....KSSSSKKLK../" +
@@ -311,6 +318,139 @@ public final class CatalogoSprites {
             "................/" +
             "................";
 
+    // mago
+    private static final String DIBUJO_MAGO =
+            ".......KK...KYK./" +
+            "......KPPK..KYK./" +
+            ".....KPPPPK.KBK./" +
+            "....KPPyyPPKKBK./" +
+            "..KKKKKKKKKKKBK./" +
+            "....KFFFFFFKKBK./" +
+            "....KFKFFKFKKBK./" +
+            "....KWWWWWWKKBK./" +
+            "...KKUUUUUUKKBK./" +
+            "..KFKUUYYUUKFBK./" +
+            "..KFKUUUUUUKFBK./" +
+            "...KUUUUUUUKKBK./" +
+            "...KUUUuuUUKKBK./" +
+            "...KUuuuuuuKKBK./" +
+            "..KUUuuuuuuUKBK./" +
+            "..KKKKKKKKKKKBK.";
+
+    // druida
+    private static final String DIBUJO_DRUIDA =
+            "......KKKK..KgK./" +
+            ".....KGGGGK.KgK./" +
+            "....KGGggGGKKBK./" +
+            "....KGFFFFGKKBK./" +
+            "....KGFKFKGKKBK./" +
+            "....KGFFFFGKKBK./" +
+            "....KGBBBBGKKBK./" +
+            "...KKGGGGGGKKBK./" +
+            "..KFKGGggGGKFBK./" +
+            "..KFKGGBBGGKFBK./" +
+            "...KKGGGGGGKKBK./" +
+            "...KGGGggGGKKBK./" +
+            "...KGGGGGGGKKBK./" +
+            "...KGGDDDDGKKBK./" +
+            "..KGGDDDDDDGKBK./" +
+            "..KKKKKKKKKKKBK.";
+
+    // ladron
+    private static final String DIBUJO_LADRON =
+            "................/" +
+            ".....KKKKKK...../" +
+            "....KppppppK..../" +
+            "...KppppppppK.LK/" +
+            "...KpKKKKKKpK.LK/" +
+            "...KpKWKKWKpK.LK/" +
+            "...KppKKKKppK.LK/" +
+            "...KKNNNNNNKKYYK/" +
+            "..KFKNNbbNNKFBK./" +
+            "..KFKNNYYNNKKKK./" +
+            "...KKNNNNNNKK.../" +
+            "....KbbbbbbK..../" +
+            "....KNNKKNNK..../" +
+            "....KNNK.KNNK.../" +
+            "...KNNNK.KNNNK../" +
+            "...KKKKK.KKKKK..";
+
+    // goblin
+    private static final String DIBUJO_GOBLIN =
+            "................/" +
+            "....KKKKKKKK..../" +
+            "...KggggggggK.../" +
+            "KgKKggggggggKKgK/" +
+            "KggKgEggggEgKggK/" +
+            ".KKKggggggggKKK./" +
+            "....KgKWWKgK..../" +
+            ".....KKKKKK...../" +
+            "..KgKNNNNNNKgK../" +
+            "..KgKNbNNbNKgK../" +
+            "..KgKNNNNNNKgK../" +
+            "....KBBBBBBK..../" +
+            "....KBBKKBBK..../" +
+            "....KggKKggK..../" +
+            "....KggKKggK..../" +
+            "...KKKKKKKKKK...";
+
+    // arana
+    private static final String DIBUJO_ARANA =
+            "................/" +
+            "................/" +
+            "................/" +
+            ".K............K./" +
+            "..K..KKKKKK..K../" +
+            "...KKpEppEpKK.../" +
+            "KKKKKppppppKKKKK/" +
+            "...KKpPppPpKK.../" +
+            ".K.KppPPPPppK.K./" +
+            "K..KpPPPPPPpK..K/" +
+            "...KpPPPPPPpK.../" +
+            "..KKpPPppPPpKK../" +
+            "..K.KpPppPpK.K../" +
+            ".K...KKKKKK...K./" +
+            "K..............K/" +
+            "................";
+
+    // golem
+    private static final String DIBUJO_GOLEM =
+            "................/" +
+            "....KKKKKKKK..../" +
+            "...KSSSSSSSSK.../" +
+            "...KSLLLLLLSK.../" +
+            "...KSELLLLESK.../" +
+            "...KSSSSSSSSK.../" +
+            "...KsKKssKKsK.../" +
+            "..KKSSSSSSSSKK../" +
+            ".KSSKSLLLLSKSSK./" +
+            "KSLSKSSLLSSKSLSK/" +
+            "KSSSKSgSSgSKSSSK/" +
+            "KSLSKsSSSSsKSLSK/" +
+            "KSSSKKKKKKKKSSSK/" +
+            ".KKK.KSSSSK.KKK./" +
+            "....KSSssSSK..../" +
+            "....KKKKKKKK....";
+
+    // espectro
+    private static final String DIBUJO_ESPECTRO =
+            "................/" +
+            ".....KKKKKK...../" +
+            "....KLLLLLLK..../" +
+            "...KLWWWWWWLK.../" +
+            "..KLLKKWWKKLLK../" +
+            "..KLLKEWWEKLLK../" +
+            "..KLLWWWWWWLLK../" +
+            "..KLLWKKKKWLLK../" +
+            ".KLLLWWWWWWLLLK./" +
+            ".KLwLWWWWWWLwLK./" +
+            "KLLwLLWWWWLLwLLK/" +
+            "KLLLLLLLLLLLLLLK/" +
+            ".KLLwLLLLLLwLLK./" +
+            ".KLLKLLKKLLKLLK./" +
+            "..KKKKLKKLKKKK../" +
+            "................";
+
     // Sin instancias
     private CatalogoSprites() {
     }
@@ -318,7 +458,7 @@ public final class CatalogoSprites {
     // Nombre del sprite número "orden" (0 a CANTIDAD-1)
     public static String nombrePorOrden(int orden) {
         if (orden == 0) {
-            return JUGADOR;
+            return CABALLERO;
         }
         if (orden == 1) {
             return ESQUELETO;
@@ -362,6 +502,27 @@ public final class CatalogoSprites {
         if (orden == 14) {
             return POCION;
         }
+        if (orden == 15) {
+            return MAGO;
+        }
+        if (orden == 16) {
+            return DRUIDA;
+        }
+        if (orden == 17) {
+            return LADRON;
+        }
+        if (orden == 18) {
+            return GOBLIN;
+        }
+        if (orden == 19) {
+            return ARANA;
+        }
+        if (orden == 20) {
+            return GOLEM;
+        }
+        if (orden == 21) {
+            return ESPECTRO;
+        }
         throw new IllegalArgumentException("orden inválido: " + orden);
     }
 
@@ -376,8 +537,8 @@ public final class CatalogoSprites {
 
     // Dibujo hecho con texto del sprite pedido
     public static Sprite proceduralDe(String nombre) {
-        if (JUGADOR.equals(nombre)) {
-            return new Sprite(DIBUJO_JUGADOR);
+        if (CABALLERO.equals(nombre)) {
+            return new Sprite(DIBUJO_CABALLERO);
         }
         if (ESQUELETO.equals(nombre)) {
             return new Sprite(DIBUJO_ESQUELETO);
@@ -420,6 +581,27 @@ public final class CatalogoSprites {
         }
         if (POCION.equals(nombre)) {
             return new Sprite(DIBUJO_POCION);
+        }
+        if (MAGO.equals(nombre)) {
+            return new Sprite(DIBUJO_MAGO);
+        }
+        if (DRUIDA.equals(nombre)) {
+            return new Sprite(DIBUJO_DRUIDA);
+        }
+        if (LADRON.equals(nombre)) {
+            return new Sprite(DIBUJO_LADRON);
+        }
+        if (GOBLIN.equals(nombre)) {
+            return new Sprite(DIBUJO_GOBLIN);
+        }
+        if (ARANA.equals(nombre)) {
+            return new Sprite(DIBUJO_ARANA);
+        }
+        if (GOLEM.equals(nombre)) {
+            return new Sprite(DIBUJO_GOLEM);
+        }
+        if (ESPECTRO.equals(nombre)) {
+            return new Sprite(DIBUJO_ESPECTRO);
         }
         throw new IllegalArgumentException("no existe el sprite: " + nombre);
     }

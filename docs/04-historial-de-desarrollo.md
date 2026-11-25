@@ -26,4 +26,10 @@ Un día de trabajo por entrada. Los mensajes de commit sugeridos están entre co
 - **Día 22:** `PruebaJuego` (265 comprobaciones) con un "jugador robot" que juega aventuras completas para revisar el equilibrio; se corrige que `Recursos` quedara en un ciclo de dependencias entre paquetes. *"Pruebas, balance y paquetes sin ciclos"*
 - **Día 23:** `ExportadorSprites`, revisión de las reglas del enunciado y documentación. *"Documentación y entrega"*
 
+- **Día 24:** Primera ronda de pruebas jugando: el selector del mapa se movía al revés con las flechas. Causa: el grafo guarda los vecinos en orden de creación, no de pantalla. Se agrega `Partida.getAdyacentesOrdenados()` (ordenamiento por inserción sobre la lista enlazada). *"Flechas del mapa corregidas"*
+- **Día 25:** Menú de **opciones** (resolución, brillo y tamaño del texto): `Opciones`, `EscenaOpciones`, `VentanaJuego` propia (la del kit tiene tamaño fijo) y `Escalado` para el mouse; se guardan en `datos/opciones.txt` con lectura tolerante. *"Opciones de pantalla"*
+- **Día 26:** Combate más profundo: **energía** además del maná (`HabilidadArma`, `HabilidadPunos`), menú estilo Pokémon (Luchar, Magia, Defender, Huir), `EstadoVeneno` por composición y tres **minijuegos** al azar (`Minijuego`, `BarraPrecision`, `MinijuegoRafaga`, `MinijuegoAnillo`) que se endurecen con `Dificultad`. *"Energía, nuevas acciones y minijuegos"*
+- **Día 27:** Cuatro **clases** (`Clase` enum: caballero, mago, druida, ladrón) con `EscenaClases`, cuatro sprites nuevos y guardado versión 2; tres hechizos nuevos (Tajo, Savia, Daga) y cuatro enemigos nuevos (Goblin, Araña, Espectro, Golem) con tres eventos más. *"Clases y más enemigos"*
+- **Día 28:** `PruebaJuego` pasa a 382 comprobaciones; el robot juega las 4 clases y con él se rebalancean armas y costos (el Caballero ganaba casi siempre y el Ladrón nunca). Se regenera la documentación. *"Pruebas y balance por clase"*
+
 > **Importante:** hacé los commits reales siguiendo este orden. El profesor puede ver `git log` con las fechas. Si algo te pasó distinto (un error que te costó un día, un cambio de diseño), corregí esta lista para que cuente lo que realmente hiciste.

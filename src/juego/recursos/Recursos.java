@@ -5,6 +5,8 @@ import java.awt.image.BufferedImage;
 import juego.archivos.GestorArchivos;
 import juego.graficos.DibujoMedieval;
 import juego.graficos.GestorSprites;
+import juego.graficos.TextoPixel;
+import juego.opciones.Opciones;
 import juego.reglas.EventoNarrativo;
 import juego.reglas.MapaBosque;
 
@@ -16,6 +18,7 @@ public class Recursos {
     private final GestorArchivos archivos;
     private final GestorSprites sprites;
     private final ListaEnlazada<EventoNarrativo> eventos;
+    private final Opciones opciones;
     private BufferedImage fondoBosque;
     private BufferedImage fondoMapa;
     private long semillaFondoMapa = -1;
@@ -25,6 +28,15 @@ public class Recursos {
         this.archivos = new GestorArchivos(carpetaDatos);
         this.sprites = new GestorSprites(carpetaAssets);
         this.eventos = archivos.cargarEventos();
+        this.opciones = archivos.cargarOpciones();
+        TextoPixel.setEscala(opciones.getEscalaTexto());
+    }
+
+    // Se llama cada vez que cambia una opción: aplica el tamaño de texto y guarda el archivo.
+    // (La resolución y el brillo los lee la ventana directamente del objeto Opciones.)
+    public void aplicarOpciones() {
+        TextoPixel.setEscala(opciones.getEscalaTexto());
+        archivos.guardarOpciones(opciones);
     }
 
     // Fondo de bosque para menú, eventos y combates (se dibuja la primera vez que se pide)
@@ -51,6 +63,10 @@ public class Recursos {
 
     public GestorSprites getSprites() {
         return sprites;
+    }
+
+    public Opciones getOpciones() {
+        return opciones;
     }
 
     public ListaEnlazada<EventoNarrativo> getEventos() {

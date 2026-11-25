@@ -129,7 +129,7 @@ public class EscenaEvento extends Escena {
         String decorado = esCofre ? CatalogoSprites.COFRE : CatalogoSprites.ALTAR;
         double flota = Math.sin(tiempo * 2) * 4;
         DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(decorado, 7), 98, 250 + flota);
-        DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(CatalogoSprites.JUGADOR, 7), ANCHO - 98, 250 - flota);
+        DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(partida.getJugador().getClase().getSprite(), 7), ANCHO - 98, 250 - flota);
 
         // Pergamino con el relato
         DibujoMedieval.marcoPergamino(g, 190, 100, 644, 256);

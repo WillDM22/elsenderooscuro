@@ -15,24 +15,24 @@ Esta guía te prepara para exponer **El Sendero Oscuro** y responder preguntas d
 ## 1. Guion de la exposición
 
 **Minuto 0–1: qué es.**
-"Es un roguelike de decisiones inspirado en Peglin. Avanzás por un bosque ramificado, con eventos de 2 o 3 opciones, y peleás con una barra de precisión como la de Undertale. Es un solo personaje humano con tres atributos y hasta cuatro habilidades."
+"Es un roguelike de decisiones inspirado en Peglin. Elegís una clase (caballero, mago, druida o ladrón), avanzás por un bosque ramificado con eventos de 2 o 3 opciones y peleás por turnos, estilo Pokémon, con minijuegos de precisión como los de Undertale. Es un solo personaje humano con tres atributos, maná, energía y hasta cuatro hechizos."
 
 **Minuto 1–3: las cuatro estructuras y para qué sirve cada una.**
 - *Grafo dirigido:* el mapa. Cada lugar es un vértice y cada camino una arista. Solo se puede ir hacia adelante.
-- *Lista enlazada:* las habilidades del héroe (máximo 4) y las opciones de cada evento.
+- *Lista enlazada:* los hechizos del héroe (máximo 4) y las opciones de cada evento.
 - *Cola:* los turnos del combate. El primero que entra es el primero que actúa.
 - *Pila:* el historial. La ruta de lugares visitados y el diario de decisiones: lo último que pasó es lo primero que se ve.
 
 "Las cuatro son propias, hechas con nodos y referencias. No uso `ArrayList`, `Stack` ni `Queue`. De `java.util` solo uso `Random`."
 
 **Minuto 3–5: cómo se conectan las piezas.**
-1. Las stats (Fuerza, Destreza, Inteligencia) alimentan fórmulas. La Destreza agranda la zona crítica de la barra y baja la velocidad del cursor.
+1. Las stats (Fuerza, Destreza, Inteligencia) alimentan fórmulas. La Destreza agranda la zona crítica de los minijuegos, baja la velocidad del cursor y da más energía. Cada clase arranca con stats, arma y hechizo distintos.
 2. El mapa se genera con una **semilla**: la misma semilla produce el mismo grafo. Por eso al guardar no guardo el grafo, solo la semilla.
 3. El guardado es un archivo de texto con una línea `CLAVE=valor` por dato. Los eventos narrativos se leen de otro archivo, así que se pueden agregar sin tocar el código.
 
 **Minuto 5–7: decisiones de diseño que puedo defender.**
-- Separé la lógica (sin Swing) de las pantallas: por eso pude hacer 265 pruebas automáticas sin abrir ventana.
-- Herencia donde hay comportamiento distinto (`Habilidad` y `Enemigo` son abstractas), pero solo donde hay un motivo.
+- Separé la lógica (sin Swing) de las pantallas: por eso pude hacer 382 pruebas automáticas sin abrir ventana.
+- Herencia donde hay comportamiento distinto (`Habilidad`, `Enemigo` y `Minijuego` son abstractas), pero solo donde hay un motivo. Y composición donde no lo hay: `Jugador` y `Enemigo` **tienen** un `EstadoVeneno`, no heredan de una clase común.
 - Si el archivo de guardado está dañado, el juego no se rompe: `cargar` devuelve `null`.
 - Si faltan los `.png`, el juego dibuja los sprites con Graphics2D: nunca falla por una imagen.
 
@@ -44,7 +44,7 @@ Esta guía te prepara para exponer **El Sendero Oscuro** y responder preguntas d
 
 1. **Nueva partida** → se ve el mapa. Señalá: "estos son los vértices, estas las aristas; solo puedo ir a los que tienen anillo blanco".
 2. Apretá **H**: "este es el diario, es una pila; muestra primero lo último".
-3. Entrá a un **combate**: elegí Ataque y mostrá la barra. "Si frenó en el centro es crítico". Mostrá arriba la **cola de turnos** (T = turno tuyo, E = enemigo).
+3. Entrá a un **combate**: elegí *Luchar → arma* y mostrá el minijuego (sale al azar: barra, ráfaga o anillo). "Si frenó en el centro es crítico". Mostrá arriba la **cola de turnos** (T = turno tuyo, E = enemigo) y la **barra de energía** que baja al golpear. Probá también **Defender** y **Huir**.
 4. Entrá a un **evento**: mostrá las 2 o 3 opciones y una opción gris (`te falta oro`).
 5. Volvé al mapa, apretá **ESC**, elegí **Continuar**: "se guardó y recupera exactamente donde estaba".
 6. Abrí `datos/guardado.txt` en el bloc de notas: "es texto plano, una clave por línea".
@@ -58,7 +58,7 @@ Tené compilado el proyecto **antes** de la exposición y probá el recorrido co
 
 ### Lista enlazada
 
-**¿Por qué una lista enlazada y no un arreglo para las habilidades?**
+**¿Por qué una lista enlazada y no un arreglo para los hechizos?**
 Porque la cantidad cambia durante el juego (empieza con 1 y llega a 4) y la cátedra pide estructuras dinámicas con nodos. Con la lista no hay que saber el tamaño de antemano ni copiar elementos al crecer. En este caso el máximo es 4, así que técnicamente un arreglo funcionaría, pero la consigna es justamente practicar la estructura dinámica.
 
 **¿Cuánto cuesta cada operación?**
@@ -145,7 +145,7 @@ Con un `BufferedReader`: leo todas las líneas a una lista, busco cada clave con
 Porque `MapaBosque` usa `new Random(semilla)`: la misma semilla produce el mismo mapa. Guardo un número en vez de decenas de nodos y aristas. Está probado: "la misma semilla genera el mismo mapa".
 
 **¿Qué pasa si el archivo de guardado está dañado o lo editó el usuario?**
-`cargar` atrapa cualquier `RuntimeException` (número mal escrito, falta una clave, habilidad inventada) y devuelve `null`; antes valida que la ruta sea un camino real del grafo y que empiece en el inicio. El menú muestra "El archivo de guardado está dañado" y no se rompe. Hay 13 pruebas de archivos dañados.
+`cargar` atrapa cualquier `RuntimeException` (número mal escrito, falta una clave, habilidad inventada) y devuelve `null`; antes valida que la ruta sea un camino real del grafo y que empiece en el inicio. El menú muestra "El archivo de guardado está dañado" y no se rompe. Hay pruebas de archivos dañados (número roto, clase inexistente, hechizos de más, ruta imposible...).
 
 **¿Por qué `null` y no lanzar una excepción?**
 Porque que falte o esté dañado el guardado no es un error del programa: es una situación esperable. El que llama (el menú) decide qué mostrar. Una excepción obligaría a envolver todo en `try/catch` en cada pantalla.
@@ -154,7 +154,7 @@ Porque que falte o esté dañado el guardado no es un error del programa: es una
 `guardar` atrapa la `IOException` y devuelve `false`; el mapa muestra "No se pudo guardar la partida".
 
 **¿Qué es el polimorfismo en tu juego? Dame un ejemplo.**
-`Combate` llama `habilidad.aplicar(...)` sin saber si es un ataque, una curación o un hechizo: cada subclase tiene su versión. Lo mismo con `enemigo.atacar(...)`: el Brujo se cura cada tercera acción y el Rey Oscuro pega doble cada cuarta; `Combate` no tiene ningún `if` por tipo de enemigo.
+`Combate` llama `habilidad.aplicar(...)` sin saber si es el arma, los puños, una curación o un hechizo: cada subclase tiene su versión. Lo mismo con `minijuego.pulsar()`: no sabe si es la barra, la ráfaga o el anillo. Lo mismo con `enemigo.atacar(...)`: el Brujo se cura cada tercera acción, el Rey Oscuro pega doble cada cuarta, el Goblin roba oro, la Araña envenena y el Golem prepara su golpe; `Combate` no tiene ningún `if` por tipo de enemigo (por eso agregar cuatro enemigos nuevos no tocó `Combate`).
 
 **¿Por qué `Habilidad` y `Enemigo` son abstractas?**
 Porque no existe "una habilidad cualquiera" ni "un enemigo cualquiera": tienen que ser de un tipo concreto. La abstracta obliga a cada hija a implementar `aplicar` o `accionar`.
@@ -166,7 +166,7 @@ Porque no existe "una habilidad cualquiera" ni "un enemigo cualquiera": tienen q
 Porque no pensé en heredarlo (hay un único personaje) y evita que una subclase rompa las validaciones. Además su constructor llama a métodos propios y el compilador advertía de ese riesgo (`this-escape`).
 
 **¿Para qué sirve `Calidad`?**
-Para que `entidades` no dependa de `reglas`. La barra (en `reglas`) devuelve un número y las habilidades (en `entidades`) lo reciben. Si `Habilidad` importara `BarraPrecision` habría un ciclo: `reglas → entidades → reglas`.
+Para que `entidades` no dependa de `reglas`. Los minijuegos (en `reglas`) devuelven un número y las habilidades (en `entidades`) lo reciben. Si `Habilidad` importara `BarraPrecision` habría un ciclo: `reglas → entidades → reglas`.
 
 **¿Por qué usás `enum` en `TipoNodo` y `EfectoEvento.Tipo`?**
 Son listas cerradas de valores (calavera, `?`, cofre...). Un `enum` evita escribir un tipo inexistente (el compilador lo rechaza) y `Tipo.valueOf("FUEGO")` lanza `IllegalArgumentException`, que uso para descartar eventos mal escritos del archivo.
@@ -185,7 +185,7 @@ Hice un "jugador robot" que juega 60 aventuras completas con una puntería regul
 La consigna pide estructuras propias con nodos y referencias para aprender cómo funcionan por dentro. Es más rápida para acceso por índice (O(1) contra O(n)), pero con listas de 1 a 4 elementos la diferencia no se nota.
 
 **2. "¿Cuál es la complejidad de `obtener` en tu lista? ¿Tiene algún problema recorrerla con `for` y `obtener(i)`?"**
-`obtener(i)` es O(i); un `for` con `obtener(i)` es O(n²) en total. Para listas chicas (habilidades, opciones, vecinos) no importa. Para listas grandes convendría un iterador o guardar el nodo actual. Lo sé y lo asumo: tiene un costo, y lo elegí a cambio de simplicidad.
+`obtener(i)` es O(i); un `for` con `obtener(i)` es O(n²) en total. Para listas chicas (hechizos, opciones, vecinos) no importa. Para listas grandes convendría un iterador o guardar el nodo actual. Lo sé y lo asumo: tiene un costo, y lo elegí a cambio de simplicidad.
 
 **3. "¿Qué pasa si agrego una arista a un vértice que no existe?"**
 `Grafo.buscar` lanza `IllegalArgumentException("no existe el vértice N")` antes de modificar nada (está probado).
@@ -199,8 +199,8 @@ El enemigo y el evento de cada nodo salen de una semilla propia (`semilla * 1000
 **6. "¿Por qué la pila de ruta guarda `Integer` y no el `NodoMapa`?"**
 Porque guardar el id alcanza (el nodo se pide al grafo) y es lo que se escribe en el archivo. Si guardara objetos tendría que reconstruirlos al cargar.
 
-**7. "¿Qué pasa si el jugador tiene 0 de maná y ya no tiene Ataque?"**
-No puede pasar: el ataque cuesta 0 maná y siempre está en el repertorio (se carga como habilidad inicial y `cargar` rechaza un guardado que no la tenga).
+**7. "¿Qué pasa si el jugador se queda sin maná, o sin energía?"**
+Siempre le queda algo por hacer: el arma y los puños cuestan **energía**, no maná, y **Defender** no cuesta nada y devuelve 4 de energía. Además el arma devuelve maná al acertar. Y `cargar` rechaza un guardado sin ningún hechizo (todo héroe empieza con uno).
 
 **8. "¿Qué es el `this-escape`?"**
 Una advertencia del compilador: llamar a un método sobrescribible desde el constructor puede ejecutar código de una subclase antes de que esté terminada. `final class Jugador` lo evita.
@@ -238,12 +238,43 @@ Parte un texto por un separador devolviendo un trozo por vez. `String.split` dev
 | Pregunta | Respuesta corta |
 |---|---|
 | Grafo del mapa | `Grafo<NodoMapa>`, dirigido, listas de adyacencia, 12 a 17 vértices |
-| Lista | Habilidades (máx. 4), opciones (2 a 3), efectos, adyacentes |
+| Lista | Hechizos (máx. 4), opciones (2 a 3), efectos, adyacentes, vecinos ordenados |
 | Cola | Turnos del combate; BFS |
 | Pila | Ruta y diario; DFS |
 | Semilla | Regenera el mapa; por eso se guarda solo un número |
 | Archivos | `guardado.txt` (`PrintWriter`) y `eventos.txt` (`BufferedReader`) |
 | Archivo dañado | `cargar` devuelve `null`, el menú avisa |
-| Barra | Crítico en el centro; Destreza agranda la zona y frena el cursor |
+| Minijuegos | Barra, ráfaga y anillo al azar; Destreza los facilita; el nivel (enemigos derrotados, tope 12) los endurece |
 | Estados del combate | ELECCION, APUNTANDO, RESULTADO, TURNO_ENEMIGO, VICTORIA, DERROTA, HUIDA |
-| Pruebas | 265 comprobaciones + verificador del kit (36/23/22) |
+| Pruebas | 382 comprobaciones + verificador del kit (36/23/22) |
+
+---
+
+## 8. Preguntas nuevas (clases, energía, minijuegos y opciones)
+
+**¿Por qué `Clase` es un `enum` y no cuatro clases hijas de `Jugador`?**
+Porque las clases no se comportan distinto: solo cambian **datos** (atributos, arma, hechizo inicial). Un `enum` con datos lo resuelve sin herencia; en cambio `Habilidad` y `Enemigo` sí tienen comportamiento distinto y por eso son clases abstractas con hijas.
+
+**¿Por qué el veneno es una clase aparte (`EstadoVeneno`) y no un campo en cada clase?**
+Lo usan `Jugador` y `Enemigo`, que no comparten padre. En lugar de duplicar el código o forzar una herencia artificial, los dos **tienen** un `EstadoVeneno` (composición).
+
+**¿Cómo se evitan los arreglos en `Clase.porOrden`?**
+Con `if` encadenados. `values()[i]` devolvería un arreglo, y la cátedra lo prohíbe en el código propio.
+
+**¿Cómo sabe la pantalla qué minijuego dibujar sin `instanceof`?**
+`Minijuego` tiene `getTipo()` (una constante entera). La escena pregunta el tipo y llama a la función de dibujo correspondiente; `Combate` expone `getBarra()`, `getRafaga()` y `getAnillo()`, y solo una no es `null`.
+
+**¿Por qué la dificultad tiene tope?**
+`Dificultad.NIVEL_MAXIMO = 12`: a partir de ahí los minijuegos no se endurecen más, así que el juego sigue siendo posible. Las pruebas lo comprueban (el nivel 500 da lo mismo que el 12).
+
+**¿Por qué las pruebas usan un `AzarFijo`?**
+`Combate` recibe el `Random` por constructor. En las pruebas se le pasa un `Random` que siempre devuelve el mismo número, así el minijuego que sale (y si la huida funciona) es siempre el esperado y las pruebas son **determinísticas**.
+
+**¿Por qué una ventana propia (`VentanaJuego`)?**
+La `Ventana` del kit tiene tamaño fijo. Para cambiar la resolución en vivo hacía falta una ventana que escale el dibujo; el juego sigue dibujando en 1024×640 y `Escalado` convierte las coordenadas del mouse.
+
+**¿Y el brillo?**
+Es una capa semitransparente (negra o blanca) dibujada **encima** del juego: no toca el monitor ni cada pantalla.
+
+**¿Qué pasaba con las flechas invertidas en el mapa?**
+El grafo guarda los vecinos en el orden en que se crearon las aristas, no en el orden de pantalla. Se corrigió con `Partida.getAdyacentesOrdenados()`, un ordenamiento por inserción sobre la lista enlazada, ordenado por la coordenada `y` del nodo.

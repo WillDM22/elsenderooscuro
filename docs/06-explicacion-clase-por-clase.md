@@ -18,11 +18,11 @@ Los bloques de código son copias exactas de los archivos del proyecto.
 2. Mapa del proyecto y orden de lectura
 3. Paquete `estructuras` (la librería propia): `ListaEnlazada`, `PilaEnlazada`, `ColaEnlazada`, `Grafo`
 4. Paquete `utilidades`: `Tokenizador`
-5. Paquete `juego.entidades`: `Calidad`, `Habilidad` y sus hijas, `Jugador`, `Enemigo` y sus hijos, fábricas
-6. Paquete `juego.reglas`: `BarraPrecision`, `Combate`, `MapaBosque`, `Partida`, eventos
+5. Paquete `juego.entidades`: `Calidad`, `Habilidad` y sus hijas (arma, puños, hechizos), `Clase`, `EstadoVeneno`, `Jugador`, `Enemigo` y sus hijos, fábricas
+6. Paquete `juego.reglas`: los tres minijuegos y `Dificultad`, `Combate`, `MapaBosque`, `Partida`, eventos
 7. Paquete `juego.archivos`: `GestorArchivos`
 8. Paquete `juego.graficos`: sprites y dibujo medieval
-9. Paquetes `juego.recursos` y `juego.pantallas`: lo que se ve y se toca
+9. Paquetes `juego.recursos`, `juego.opciones`, `juego.ventana` y `juego.pantallas`: lo que se ve y se toca
 10. El motor del kit (lo mínimo que hay que saber)
 11. `PruebaJuego`: cómo se prueba todo sin abrir la ventana
 12. Una partida de punta a punta (recorrido completo)
@@ -74,12 +74,14 @@ src/
   estructuras/    ListaEnlazada, PilaEnlazada, ColaEnlazada, Grafo      <- librería propia
   utilidades/     Tokenizador                                           <- librería propia
   juego/
-    entidades/    Jugador, Habilidad..., Enemigo...                     <- los "personajes"
-    reglas/       Combate, BarraPrecision, MapaBosque, Partida, eventos <- las reglas del juego
+    entidades/    Jugador, Clase, Habilidad..., Enemigo...              <- los "personajes"
+    reglas/       Combate, Minijuego..., MapaBosque, Partida, eventos   <- las reglas del juego
     archivos/     GestorArchivos                                        <- guardar y cargar
     graficos/     Paleta, Sprite, GestorSprites, DibujoMedieval...      <- cómo se dibuja
     recursos/     Recursos                                              <- objetos compartidos
-    pantallas/    EscenaMenu, EscenaMapa, EscenaEvento, EscenaCombate...<- lo que ve el usuario
+    opciones/     Opciones                                              <- resolución, brillo, texto
+    ventana/      VentanaJuego, Escalado                                <- ventana propia con zoom
+    pantallas/    EscenaMenu, EscenaClases, EscenaMapa, EscenaCombate...<- lo que ve el usuario
   motor/ contratos/ ui/ verificador/                                    <- kit del profesor
 ```
 
@@ -775,7 +777,7 @@ Acá viven los "personajes" del juego: el héroe, sus habilidades y los enemigos
 
 ### 5.1 `Calidad`
 
-**Para qué sirve:** nombrar el resultado de la barra de precisión: fallo, normal o crítico.
+**Para qué sirve:** nombrar el resultado de un minijuego de combate (barra, ráfaga o anillo): fallo, normal o crítico.
 
 ```java
 public final class Calidad {
@@ -803,11 +805,11 @@ public final class Calidad {
 
 - Son tres constantes enteras (`public static final`): `Calidad.FALLO` vale 0, `Calidad.NORMAL` 1 y `Calidad.CRITICO` 2. Se escriben en mayúsculas por convención.
 - El constructor es `private`: nadie puede hacer `new Calidad()` (no tiene sentido; es una clase de utilidad).
-- **Por qué está en `entidades` y no en `reglas`:** la barra de precisión (en `reglas`) devuelve una calidad y las habilidades (en `entidades`) la reciben. Si `Habilidad` importara `BarraPrecision` y `BarraPrecision` importara `Jugador` habría un **ciclo de dependencias** entre paquetes. Poniendo estas tres constantes en `entidades`, el ciclo desaparece.
+- **Por qué está en `entidades` y no en `reglas`:** los minijuegos (en `reglas`) devuelven una calidad y las habilidades (en `entidades`) la reciben. Si `Habilidad` importara el minijuego y el minijuego importara `Jugador` habría un **ciclo de dependencias** entre paquetes. Poniendo estas tres constantes en `entidades`, el ciclo desaparece.
 
 ### 5.2 `Habilidad` (abstracta)
 
-**Para qué sirve:** ser el molde común de las cuatro habilidades del héroe. Define lo que **todas** tienen (código, nombre, costo de maná) y obliga a cada una a decir **qué hace** (`aplicar`).
+**Para qué sirve:** ser el molde común de **todo lo que el héroe puede hacer para atacar o curarse**: el arma, los puños y los hechizos. Define lo que todas tienen (código, nombre, costo de **maná** y costo de **energía**) y obliga a cada una a decir **qué hace** (`aplicar`).
 
 ```java
 public abstract class Habilidad {
@@ -816,28 +818,35 @@ public abstract class Habilidad {
     private final String codigo;
     private final String nombre;
     private final int costoMana;
+    private final int costoEnergia;
 
-    // Constructor
+    // Constructor para hechizos: solo cuestan maná
     protected Habilidad(String codigo, String nombre, int costoMana) {
+        this(codigo, nombre, costoMana, 0);
+    }
+
+    // Constructor completo
+    protected Habilidad(String codigo, String nombre, int costoMana, int costoEnergia) {
         if (codigo == null || codigo.isEmpty()) {
             throw new IllegalArgumentException("la habilidad necesita un código");
         }
         if (nombre == null || nombre.isEmpty()) {
             throw new IllegalArgumentException("la habilidad necesita un nombre");
         }
-        if (costoMana < 0) {
-            throw new IllegalArgumentException("el costo de maná no puede ser negativo: " + costoMana);
+        if (costoMana < 0 || costoEnergia < 0) {
+            throw new IllegalArgumentException("los costos no pueden ser negativos");
         }
         this.codigo = codigo;
         this.nombre = nombre;
         this.costoMana = costoMana;
+        this.costoEnergia = costoEnergia;
     }
 ```
 
 - `abstract class`: no se puede hacer `new Habilidad(...)`. Solo existen las hijas.
-- El constructor es `protected`: solo lo llaman las clases hijas con `super(...)`.
-- Las tres validaciones lanzan `IllegalArgumentException` con un mensaje claro. **Validar en el constructor garantiza que nunca exista una habilidad inválida** (un nombre vacío, un costo negativo).
-- `codigo` es el identificador interno (`"ATAQUE"`, `"CURACION"`...). Es lo que se guarda en el archivo.
+- Hay **dos constructores**, ambos `protected` (solo los llaman las hijas con `super(...)`). El corto es para **hechizos** (solo cuestan maná) y delega en el completo con `this(codigo, nombre, costoMana, 0)`: "energía 0". El completo es para armas y puños, que cuestan energía.
+- Las validaciones lanzan `IllegalArgumentException` con un mensaje claro. **Validar en el constructor garantiza que nunca exista una habilidad inválida** (un nombre vacío, un costo negativo).
+- `codigo` es el identificador interno (`"CURACION"`, `"VENENO"`...). Es lo que se guarda en el archivo.
 
 ```java
 public abstract String aplicar(Jugador jugador, Enemigo enemigo, int calidad);
@@ -859,62 +868,132 @@ public boolean esEscape() {
 
 // Getters
 public String getCodigo() {
-    return codigo;
-}
-
-public String getNombre() {
 ```
 
 - `aplicar` y `getDescripcion` son **abstractos**: no tienen cuerpo (terminan en `;`). Cada hija **debe** escribirlos o no compila.
-- `usaBarra`, `getDificultadBarra` y `esEscape` tienen un **valor por defecto** (la mayoría usa la barra, con dificultad normal, y no es un escape). Las hijas que sean distintas lo **sobrescriben** con `@Override`.
+- `usaBarra`, `getDificultadBarra` y `esEscape` tienen un **valor por defecto** (la mayoría usa un minijuego, con dificultad normal, y no es un escape). Las hijas que sean distintas lo **sobrescriben** con `@Override`. (`usaBarra` conserva su nombre histórico, pero hoy significa "usa un minijuego").
 - `textoCalidad` es `protected`: lo usan las hijas para escribir "¡CRÍTICO!" o "Fallaste." antes del mensaje.
 
-**Polimorfismo:** `Combate` guarda una `Habilidad` y llama `habilidad.aplicar(...)`. No sabe (ni le importa) cuál de las cuatro es: Java ejecuta la versión de la hija correcta.
+**Polimorfismo:** `Combate` guarda una `Habilidad` y llama `habilidad.aplicar(...)`. No sabe (ni le importa) si es un arma, los puños o cuál de los seis hechizos: Java ejecuta la versión de la hija correcta.
 
-### 5.3 Las cuatro habilidades
+### 5.3 El arma y los puños (cuestan **energía**)
+
+Cada clase de héroe tiene **un arma propia** (espada, bastón, dagas...). En lugar de hacer cuatro clases casi iguales, hay **una sola** `HabilidadArma` configurada con datos: cuánta energía cuesta, qué porcentaje del daño físico pega, cuánto multiplica el crítico y cuánto maná devuelve al acertar. Es el mismo criterio de *diseño dirigido por datos* que se usó con el Lobo.
 
 ```java
-public class HabilidadAtaque extends Habilidad {
+public class HabilidadArma extends Habilidad {
 
     // Constantes
-    public static final String CODIGO = "ATAQUE";
-    private static final int MANA_RECUPERADO = 2;
+    public static final String CODIGO = "ARMA";
+
+    // Atributos
+    private final int porcentaje;
+    private final int multiplicadorCritico;
+    private final int manaRecuperado;
 
     // Constructor
-    public HabilidadAtaque() {
-        super(CODIGO, "Ataque con arma", 0);
+    public HabilidadArma(String nombre, int costoEnergia, int porcentaje, int multiplicadorCritico, int manaRecuperado) {
+        super(CODIGO, nombre, 0, costoEnergia);
+        if (porcentaje < 1 || porcentaje > 300) {
+            throw new IllegalArgumentException("porcentaje de daño fuera de rango: " + porcentaje);
+        }
+        if (multiplicadorCritico < 1 || multiplicadorCritico > 5) {
+            throw new IllegalArgumentException("multiplicador de crítico fuera de rango: " + multiplicadorCritico);
+        }
+        if (manaRecuperado < 0) {
+            throw new IllegalArgumentException("el maná recuperado no puede ser negativo");
+        }
+        this.porcentaje = porcentaje;
+        this.multiplicadorCritico = multiplicadorCritico;
+        this.manaRecuperado = manaRecuperado;
     }
 
     @Override
     public String aplicar(Jugador jugador, Enemigo enemigo, int calidad) {
         if (calidad == Calidad.FALLO) {
-            return textoCalidad(calidad) + "Tu espada pasa de largo.";
+            return textoCalidad(calidad) + "Tu golpe con " + getNombre() + " pasa de largo.";
         }
-        int danio = jugador.getDanioFisico();
+        int danio = Math.max(1, jugador.getDanioFisico() * porcentaje / 100);
+        if (calidad == Calidad.CRITICO) {
+            danio = danio * multiplicadorCritico;
+        }
+        int real = enemigo.recibirDanio(danio);
+        jugador.cambiarMana(manaRecuperado);
+        return textoCalidad(calidad) + getNombre() + " golpea a " + enemigo.getNombre() + " por " + real
+                + " de daño. (+" + manaRecuperado + " maná)";
+    }
+
+    // Cuánto daño haría un golpe normal (lo usa la pantalla para mostrarlo)
+    public int getDanioNormal(Jugador jugador) {
+        return Math.max(1, jugador.getDanioFisico() * porcentaje / 100);
+    }
+
+    public int getManaRecuperado() {
+        return manaRecuperado;
+    }
+
+    public int getMultiplicadorCritico() {
+        return multiplicadorCritico;
+    }
+
+    @Override
+    public String getDescripcion() {
+        return "Golpe con tu arma (Fuerza). Crítico x" + multiplicadorCritico + ". Recupera " + manaRecuperado + " de maná.";
+    }
+}
+```
+
+- `super(CODIGO, nombre, 0, costoEnergia)`: usa el constructor completo del padre con **0 de maná** y el costo de energía que le pasen.
+- El constructor valida los rangos (porcentaje de 1 a 300, multiplicador de 1 a 5).
+- `aplicar`: si fue **fallo**, no hace daño. Si no, el daño es `getDanioFisico() * porcentaje / 100` (primero se multiplica y después se divide para no perder precisión con enteros) y, si fue **crítico**, se multiplica por el `multiplicadorCritico` de la clase (x2 la mayoría, x3 el ladrón). `enemigo.recibirDanio` devuelve el daño **real** y es el que se muestra.
+- Al acertar recupera maná (`jugador.cambiarMana`): así el héroe siempre tiene algo para hacer.
+
+```java
+public class HabilidadPunos extends Habilidad {
+
+    // Constantes
+    public static final String CODIGO = "PUNOS";
+    private static final int ENERGIA = 2;
+    private static final int MANA_RECUPERADO = 1;
+
+    // Constructor
+    public HabilidadPunos() {
+        super(CODIGO, "Puños", 0, ENERGIA);
+    }
+
+    @Override
+    public String aplicar(Jugador jugador, Enemigo enemigo, int calidad) {
+        if (calidad == Calidad.FALLO) {
+            return textoCalidad(calidad) + "Tu puño golpea el aire.";
+        }
+        int danio = 1 + jugador.getFuerza();
         if (calidad == Calidad.CRITICO) {
             danio = danio * 2;
         }
         int real = enemigo.recibirDanio(danio);
         jugador.cambiarMana(MANA_RECUPERADO);
-        return textoCalidad(calidad) + "Golpeas a " + enemigo.getNombre() + " por " + real
+        return textoCalidad(calidad) + "Tus puños golpean a " + enemigo.getNombre() + " por " + real
                 + " de daño. (+" + MANA_RECUPERADO + " maná)";
     }
 
     @Override
+    public double getDificultadBarra() {
+        return 1.15;
+    }
+
+    @Override
     public String getDescripcion() {
-        return "Golpe con tu arma. Daño según Fuerza. Recupera 2 de maná.";
+        return "Golpe débil (1 + Fuerza) pero casi no cansa. Más fácil de acertar.";
     }
 }
 ```
 
-- `extends Habilidad`: "un ataque **es una** habilidad".
-- `CODIGO` es una constante pública: así otras clases escriben `HabilidadAtaque.CODIGO` en lugar de repetir `"ATAQUE"` (un error de tipeo no se detectaría; con la constante sí).
-- `super(CODIGO, "Ataque con arma", 0)`: llama al constructor del padre con el código, el nombre y **0 de maná**.
-- `aplicar`:
-  - **Fallo**: no hace daño, solo avisa.
-  - Si no: el daño es `jugador.getDanioFisico()` (que escala con **Fuerza**). Si fue **crítico**, se duplica.
-  - `enemigo.recibirDanio(danio)` devuelve el daño **real** aplicado (que puede ser menor si al enemigo le quedaba poca vida) y es el que se muestra.
-  - Al acertar, devuelve 2 de maná: así el héroe nunca se queda sin poder hacer nada.
+- Los puños son la opción **barata**: 2 de energía, daño `1 + Fuerza` (mucho menor que el arma) y una barra algo más fácil (`getDificultadBarra` mayor a 1). Sirven cuando no alcanza la energía para el arma.
+- La clase `Jugador` tiene **un `HabilidadArma` y un `HabilidadPunos` propios** (no están en la lista de hechizos): por eso no cuentan para el límite de 4.
+
+### 5.4 Los seis hechizos (cuestan **maná**)
+
+El repertorio de hechizos del héroe tiene **máximo 4**, elegidos entre estos seis. Cada hechizo es una clase hija de `Habilidad`:
 
 ```java
 public class HabilidadCuracion extends Habilidad {
@@ -945,9 +1024,7 @@ public class HabilidadCuracion extends Habilidad {
 }
 ```
 
-- Cuesta 4 de maná y **no usa la barra**: sobrescribe `usaBarra()` para devolver `false`.
-- Cura `getPotenciaCuracion()` (6 + 3 × Inteligencia). `jugador.curar(...)` devuelve lo que **realmente** curó (no puede pasar de la vida máxima) y eso se muestra.
-- Ignora los parámetros `enemigo` y `calidad`: tiene que recibirlos porque así lo define el método abstracto del padre.
+- **Luz sanadora**: cuesta 4 de maná y **no usa minijuego**: sobrescribe `usaBarra()` para devolver `false`. Cura `getPotenciaCuracion()` (6 + 3 × Inteligencia). `jugador.curar(...)` devuelve lo que **realmente** curó (no puede pasar de la vida máxima).
 
 ```java
 public class HabilidadGolpePotente extends Habilidad {
@@ -985,9 +1062,7 @@ public class HabilidadGolpePotente extends Habilidad {
 }
 ```
 
-- Cuesta 5 de maná y su daño escala con **Inteligencia** (`getPotenciaMagica`).
-- El crítico hace `danio * 5 / 2` (2,5 veces; con enteros primero se multiplica y después se divide para no perder precisión).
-- `getDificultadBarra()` devuelve 0,6: la barra se vuelve **más exigente** (zona crítica más chica y cursor más rápido). Lo pedía el enunciado: gran daño, barra más difícil.
+- **Golpe arcano**: cuesta 5 de maná y su daño escala con **Inteligencia** (`getPotenciaMagica`). El crítico hace `danio * 5 / 2` (2,5 veces). `getDificultadBarra()` devuelve 0,6: el minijuego se vuelve **más exigente**. Gran daño, minijuego difícil.
 
 ```java
 public class HabilidadEscape extends Habilidad {
@@ -1022,26 +1097,152 @@ public class HabilidadEscape extends Habilidad {
 }
 ```
 
-- Cuesta 3 de maná, no usa la barra y devuelve `true` en `esEscape()`.
-- **El Escape no huye por sí mismo**: solo se identifica como escape. Es `Combate` quien, al ver `esEscape()`, termina la pelea con el estado `HUIDA` (y quien impide usarlo contra el jefe). Así cada clase hace una sola cosa.
+- **Paso sombrío**: cuesta 3 de maná, no usa minijuego y devuelve `true` en `esEscape()`. **No huye por sí mismo**: solo se identifica como escape. Es `Combate` quien, al ver `esEscape()`, termina la pelea con el estado `HUIDA` (y quien impide usarlo contra el jefe). Así cada clase hace una sola cosa.
 
-### 5.4 `CatalogoHabilidades`
+```java
+public class HabilidadFuria extends Habilidad {
 
-**Para qué sirve:** crear una habilidad a partir de su código (`"GOLPE"` → un objeto `HabilidadGolpePotente`). Se necesita al **cargar** el archivo de guardado y al leer eventos, donde las habilidades aparecen como texto.
+    // Constantes
+    public static final String CODIGO = "FURIA";
+
+    // Constructor
+    public HabilidadFuria() {
+        super(CODIGO, "Tajo heroico", 4);
+    }
+
+    @Override
+    public String aplicar(Jugador jugador, Enemigo enemigo, int calidad) {
+        if (calidad == Calidad.FALLO) {
+            return textoCalidad(calidad) + "Tu tajo corta solo el aire.";
+        }
+        int danio = jugador.getDanioFisico() * 3 / 2;
+        if (calidad == Calidad.CRITICO) {
+            danio = danio * 2;
+        }
+        int real = enemigo.recibirDanio(danio);
+        return textoCalidad(calidad) + "Un tajo heroico abre a " + enemigo.getNombre() + " por " + real + " de daño.";
+    }
+
+    @Override
+    public double getDificultadBarra() {
+        return 0.8;
+    }
+
+    @Override
+    public String getDescripcion() {
+        return "Tajo de gran daño físico (Fuerza). Barra algo difícil.";
+    }
+}
+```
+
+- **Tajo heroico** (hechizo inicial del Caballero): cuesta 4 de maná y pega `getDanioFisico() * 3 / 2` (escala con **Fuerza**); el crítico lo duplica.
+
+```java
+public class HabilidadSavia extends Habilidad {
+
+    // Constantes
+    public static final String CODIGO = "SAVIA";
+
+    // Constructor
+    public HabilidadSavia() {
+        super(CODIGO, "Savia vital", 4);
+    }
+
+    @Override
+    public String aplicar(Jugador jugador, Enemigo enemigo, int calidad) {
+        if (calidad == Calidad.FALLO) {
+            return textoCalidad(calidad) + "Las raíces no logran atrapar a " + enemigo.getNombre() + ".";
+        }
+        int danio = jugador.getPotenciaMagica() * 2 / 3;
+        if (calidad == Calidad.CRITICO) {
+            danio = danio * 2;
+        }
+        int real = enemigo.recibirDanio(danio);
+        int curado = jugador.curar(Math.max(1, real / 2));
+        return textoCalidad(calidad) + "Raíces vivas drenan a " + enemigo.getNombre() + " por " + real
+                + " de daño y te curan " + curado + ".";
+    }
+
+    @Override
+    public double getDificultadBarra() {
+        return 0.9;
+    }
+
+    @Override
+    public String getDescripcion() {
+        return "Daño mágico (Inteligencia) y te curas la mitad de lo que causas.";
+    }
+}
+```
+
+- **Savia vital** (hechizo inicial del Druida): cuesta 4 de maná, hace daño mágico y **cura la mitad del daño causado** (`jugador.curar(Math.max(1, real / 2))`). Es un ataque que además te sostiene.
+
+```java
+public class HabilidadVeneno extends Habilidad {
+
+    // Constantes
+    public static final String CODIGO = "VENENO";
+    private static final int TURNOS = 3;
+
+    // Constructor
+    public HabilidadVeneno() {
+        super(CODIGO, "Daga envenenada", 3);
+    }
+
+    @Override
+    public String aplicar(Jugador jugador, Enemigo enemigo, int calidad) {
+        if (calidad == Calidad.FALLO) {
+            return textoCalidad(calidad) + "La daga no llega a rozar a " + enemigo.getNombre() + ".";
+        }
+        int danio = Math.max(1, jugador.getDanioFisico() * 3 / 4);
+        int turnos = TURNOS;
+        if (calidad == Calidad.CRITICO) {
+            turnos = TURNOS + 1;
+        }
+        int danioVeneno = 2 + jugador.getDestreza() / 2;
+        int real = enemigo.recibirDanio(danio);
+        enemigo.envenenar(turnos, danioVeneno);
+        return textoCalidad(calidad) + "Cortas a " + enemigo.getNombre() + " por " + real + " y lo envenenas ("
+                + danioVeneno + " por turno, " + turnos + " turnos).";
+    }
+
+    @Override
+    public double getDificultadBarra() {
+        return 0.9;
+    }
+
+    @Override
+    public String getDescripcion() {
+        return "Corte leve y veneno que dura varios turnos (más Destreza, más veneno).";
+    }
+}
+```
+
+- **Daga envenenada** (hechizo inicial del Ladrón): cuesta 3 de maná, hace un corte leve y deja al enemigo **envenenado** (`enemigo.envenenar(turnos, danioVeneno)`). El veneno pega más fuerte con más Destreza (`2 + Destreza / 2`) y un crítico lo alarga un turno.
+
+### 5.5 `CatalogoHabilidades`
+
+**Para qué sirve:** crear un hechizo a partir de su código (`"GOLPE"` → un objeto `HabilidadGolpePotente`). Se necesita al **cargar** el archivo de guardado y al leer eventos, donde las habilidades aparecen como texto.
 
 ```java
 public static String codigoPorOrden(int orden) {
     if (orden == 0) {
-        return HabilidadAtaque.CODIGO;
-    }
-    if (orden == 1) {
         return HabilidadCuracion.CODIGO;
     }
-    if (orden == 2) {
+    if (orden == 1) {
         return HabilidadGolpePotente.CODIGO;
     }
-    if (orden == 3) {
+    if (orden == 2) {
         return HabilidadEscape.CODIGO;
+    }
+    if (orden == 3) {
+        return HabilidadFuria.CODIGO;
+    }
+    if (orden == 4) {
+        return HabilidadSavia.CODIGO;
+    }
+    if (orden == 5) {
+        return HabilidadVeneno.CODIGO;
     }
     throw new IllegalArgumentException("orden inválido: " + orden);
 }
@@ -1060,9 +1261,6 @@ public static boolean esValido(String codigo) {
 
 ```java
 public static Habilidad crear(String codigo) {
-    if (HabilidadAtaque.CODIGO.equals(codigo)) {
-        return new HabilidadAtaque();
-    }
     if (HabilidadCuracion.CODIGO.equals(codigo)) {
         return new HabilidadCuracion();
     }
@@ -1072,18 +1270,166 @@ public static Habilidad crear(String codigo) {
     if (HabilidadEscape.CODIGO.equals(codigo)) {
         return new HabilidadEscape();
     }
+    if (HabilidadFuria.CODIGO.equals(codigo)) {
+        return new HabilidadFuria();
+    }
+    if (HabilidadSavia.CODIGO.equals(codigo)) {
+        return new HabilidadSavia();
+    }
+    if (HabilidadVeneno.CODIGO.equals(codigo)) {
+        return new HabilidadVeneno();
+    }
     throw new IllegalArgumentException("habilidad desconocida: " + codigo);
 }
 ```
 
 - Es una **clase de utilidad**: constructor privado, métodos `static`.
-- `codigoPorOrden(0..3)` define el **orden en que se desbloquean**: Ataque, Curación, Golpe, Escape. Lo usa `Jugador.proximaHabilidadPorAprender` y el cofre.
+- `codigoPorOrden(0..5)` define el **orden en que se ofrecen** los hechizos nuevos: Curación, Golpe, Escape, Tajo, Savia, Daga. Lo usa `Jugador.proximaHabilidadPorAprender` y el cofre (que se salta los que el héroe ya sabe).
 - `esValido(codigo)` recorre el catálogo preguntando si el texto coincide con alguno.
-- `crear(codigo)` es una **fábrica** (patrón *Factory*): devuelve el objeto correcto según el texto. Con un código desconocido lanza `IllegalArgumentException`. Se compara con `HabilidadAtaque.CODIGO.equals(codigo)` y no al revés para que, si `codigo` fuera `null`, no se produzca un `NullPointerException`.
+- `crear(codigo)` es una **fábrica** (patrón *Factory*): devuelve el objeto correcto según el texto. Con un código desconocido lanza `IllegalArgumentException`. Se compara con `HabilidadCuracion.CODIGO.equals(codigo)` y no al revés para que, si `codigo` fuera `null`, no se produzca un `NullPointerException`.
+- Las armas y los puños **no** están en el catálogo: no son hechizos.
 
-### 5.5 `Jugador`
+### 5.6 `Clase` (un `enum` con datos)
 
-**Para qué sirve:** guardar todo lo del héroe: atributos, vida, maná, oro y el repertorio de habilidades. Aplica las **fórmulas** que conectan los tres atributos con todo lo demás.
+**Para qué sirve:** definir las **cuatro clases del héroe** (Caballero, Mago, Druida, Ladrón). Cada una trae sus atributos iniciales, su arma y su hechizo inicial.
+
+Un `enum` es una lista **cerrada** de valores. A diferencia de las constantes enteras, cada valor puede llevar datos y métodos, y el compilador impide inventar uno que no existe.
+
+```java
+public enum Clase {
+
+    CABALLERO("Caballero", "caballero", 5, 3, 1, "Espada", 7, 90, 2, 1,
+            HabilidadFuria.CODIGO, "Resistente y fuerte. Su espada pega duro pero cansa."),
+    MAGO("Mago", "mago", 1, 3, 5, "Bastón", 3, 70, 2, 4,
+            HabilidadGolpePotente.CODIGO, "Frágil, con mucho maná. Su bastón recarga el maná."),
+    DRUIDA("Druida", "druida", 3, 3, 3, "Bastón de roble", 4, 100, 2, 2,
+            HabilidadSavia.CODIGO, "Equilibrado: pega y se cura con la savia del bosque."),
+    LADRON("Ladrón", "ladron", 2, 5, 2, "Dagas", 3, 150, 3, 2,
+            HabilidadVeneno.CODIGO, "Ágil: barra más lenta, críticos x3 y veneno.");
+
+    // Atributos de cada clase
+    private final String nombre;
+    private final String sprite;
+    private final int fuerza;
+    private final int destreza;
+    private final int inteligencia;
+    private final String nombreArma;
+    private final int energiaArma;
+    private final int porcentajeArma;
+    private final int criticoArma;
+    private final int manaArma;
+    private final String hechizoInicial;
+    private final String descripcion;
+```
+
+Cada línea de arriba (por ejemplo `CABALLERO("Caballero", "caballero", 5, 3, 1, "Espada", 6, 90, 2, 1, ...)`) **crea un objeto** de la clase: los valores entre paréntesis son, en orden, nombre, sprite, Fuerza, Destreza, Inteligencia, nombre del arma, energía que cuesta, porcentaje de daño, multiplicador de crítico, maná que devuelve, código del hechizo inicial y descripción.
+
+```java
+public HabilidadArma crearArma() {
+    return new HabilidadArma(nombreArma, energiaArma, porcentajeArma, criticoArma, manaArma);
+}
+```
+
+```java
+public static Clase porCodigo(String codigo) {
+    if (codigo == null) {
+        return null;
+    }
+    try {
+        return Clase.valueOf(codigo);
+    } catch (IllegalArgumentException e) {
+        return null;
+    }
+}
+```
+
+```java
+public static Clase porOrden(int orden) {
+    if (orden == 0) {
+        return CABALLERO;
+    }
+    if (orden == 1) {
+        return MAGO;
+    }
+    if (orden == 2) {
+        return DRUIDA;
+    }
+    if (orden == 3) {
+        return LADRON;
+    }
+    throw new IllegalArgumentException("orden de clase inválido: " + orden);
+}
+```
+
+- `crearArma()` devuelve **un arma nueva** para cada héroe (así dos héroes no comparten el mismo objeto).
+- `porCodigo("MAGO")` convierte el texto del archivo de guardado en la clase. Usa `Clase.valueOf(codigo)`, que lanza `IllegalArgumentException` si el texto no existe; ese error se **atrapa con `try/catch`** y se devuelve `null`, para que un archivo dañado no tire el juego.
+- `porOrden(0..3)` da la clase en el orden de la pantalla de elección. Se escribe con `if` encadenados (en lugar de `values()[orden]`) para **no usar arreglos**, como pide la cátedra.
+
+### 5.7 `EstadoVeneno` (composición)
+
+**Para qué sirve:** representar un veneno (cuántos turnos dura y cuánto daño hace por turno). Tanto el `Jugador` (picadura de araña) como el `Enemigo` (daga envenenada) **tienen uno**.
+
+```java
+public class EstadoVeneno {
+
+    // Atributos
+    private int turnos;
+    private int danio;
+
+    // Aplica (o renueva) el veneno. Si ya había uno, queda el que dura más y el que pega más fuerte.
+    public void aplicar(int nuevosTurnos, int nuevoDanio) {
+        if (nuevosTurnos <= 0 || nuevoDanio <= 0) {
+            throw new IllegalArgumentException("el veneno necesita turnos y daño positivos");
+        }
+        if (estaActivo()) {
+            danio = Math.max(danio, nuevoDanio);
+            turnos = Math.max(turnos, nuevosTurnos);
+        } else {
+            danio = nuevoDanio;
+            turnos = nuevosTurnos;
+        }
+    }
+
+    // Un turno de veneno: devuelve el daño que corresponde (0 si no hay veneno)
+    public int pasarTurno() {
+        if (!estaActivo()) {
+            return 0;
+        }
+        int resultado = danio;
+        turnos--;
+        if (turnos == 0) {
+            danio = 0;
+        }
+        return resultado;
+    }
+
+    public boolean estaActivo() {
+        return turnos > 0;
+    }
+
+    public void limpiar() {
+        turnos = 0;
+        danio = 0;
+    }
+
+    public int getTurnos() {
+        return turnos;
+    }
+
+    public int getDanio() {
+        return danio;
+    }
+}
+```
+
+- **Composición en lugar de herencia:** `Jugador` y `Enemigo` no heredan de una clase común "Ser vivo". Cada uno tiene un campo `private final EstadoVeneno veneno = new EstadoVeneno();` ("un jugador **tiene** un veneno"). Así se reutiliza la lógica sin atar dos clases distintas.
+- `aplicar` rechaza turnos o daño no positivos. Si ya había veneno, **conserva el que dura más y el que pega más fuerte** (`Math.max`).
+- `pasarTurno` devuelve el daño de este turno (0 si no hay veneno), descuenta un turno y, al llegar a 0, limpia el daño.
+- El veneno se cobra **al terminar el turno** del envenenado (lo hace `Combate`) y se limpia al empezar un combate nuevo (`Jugador.prepararCombate`).
+
+### 5.8 `Jugador`
+
+**Para qué sirve:** guardar todo lo del héroe: clase, atributos, vida, maná, **energía**, oro, arma, puños, el repertorio de hechizos y los estados de combate (guardia, veneno). Aplica las **fórmulas** que conectan los tres atributos con todo lo demás.
 
 ```java
 public final class Jugador {
@@ -1093,52 +1439,71 @@ public final class Jugador {
     public static final int DESTREZA = 1;
     public static final int INTELIGENCIA = 2;
     public static final int MAX_HABILIDADES = 4;
-    private static final int ATRIBUTO_INICIAL = 3;
     private static final int ATRIBUTO_MAXIMO = 20;
+    public static final int ENERGIA_POR_RONDA = 3;
 
     // Atributos
+    private final Clase clase;
     private int fuerza;
     private int destreza;
     private int inteligencia;
     private int vida;
     private int mana;
+    private int energia;
     private int oro;
+    private boolean guardia;
+    private final EstadoVeneno veneno = new EstadoVeneno();
+    private final HabilidadArma arma;
+    private final HabilidadPunos punos = new HabilidadPunos();
     private final ListaEnlazada<Habilidad> habilidades = new ListaEnlazada<>();
 ```
 
-- `final class`: no se puede heredar (hay un único personaje).
+- `final class`: no se puede heredar (hay un único tipo de personaje; lo que cambia es la `Clase`).
 - Las constantes `FUERZA`, `DESTREZA`, `INTELIGENCIA` (0, 1, 2) identifican un atributo al llamar `mejorarAtributo(Jugador.FUERZA, 2)`.
-- `MAX_HABILIDADES = 4` es el límite que pide el enunciado.
-- `habilidades` es una `ListaEnlazada<Habilidad>`: **el repertorio es una lista enlazada propia**, como exige la consigna. Es `final` porque la lista se crea una vez; lo que cambia es su contenido.
+- `MAX_HABILIDADES = 4` es el límite de **hechizos** que pide el enunciado. `ENERGIA_POR_RONDA = 3` es lo que se recupera de energía en cada ronda de combate.
+- `clase` es `final`: el héroe no cambia de clase. `arma` también es `final` y sale de la clase.
+- `veneno` es un `EstadoVeneno` (composición). `guardia` es un `boolean`: mientras vale `true`, los golpes recibidos valen la mitad.
+- `habilidades` es una `ListaEnlazada<Habilidad>`: **el repertorio de hechizos es una lista enlazada propia**, como exige la consigna.
 
 ```java
-public Jugador() {
-    this(ATRIBUTO_INICIAL, ATRIBUTO_INICIAL, ATRIBUTO_INICIAL, 0, 0, 0);
+public Jugador(Clase clase) {
+    this(clase, clase.getFuerza(), clase.getDestreza(), clase.getInteligencia(), 0, 0, 0);
     this.vida = getVidaMaxima();
     this.mana = getManaMaximo();
-    habilidades.agregar(new HabilidadAtaque());
+    habilidades.agregar(CatalogoHabilidades.crear(clase.getHechizoInicial()));
 }
 
-// Constructor para cargar una partida: sin habilidades (se agregan después)
-public Jugador(int fuerza, int destreza, int inteligencia, int vida, int mana, int oro) {
+// Héroe por defecto: el druida (atributos 3/3/3)
+public Jugador() {
+    this(Clase.DRUIDA);
+}
+
+// Constructor para cargar una partida: sin hechizos (se agregan después)
+public Jugador(Clase clase, int fuerza, int destreza, int inteligencia, int vida, int mana, int oro) {
+    if (clase == null) {
+        throw new IllegalArgumentException("el héroe necesita una clase");
+    }
     validarAtributo(fuerza, "fuerza");
     validarAtributo(destreza, "destreza");
     validarAtributo(inteligencia, "inteligencia");
+    this.clase = clase;
+    this.arma = clase.crearArma();
     this.fuerza = fuerza;
     this.destreza = destreza;
     this.inteligencia = inteligencia;
     this.vida = limitar(vida, 0, getVidaMaxima());
     this.mana = limitar(mana, 0, getManaMaximo());
+    this.energia = getEnergiaMaxima();
     this.oro = Math.max(0, oro);
 }
 ```
 
-Hay **dos constructores**:
+Hay varios constructores que se **encadenan con `this(...)`**:
 
-1. `Jugador()`: una partida nueva. Llama al otro constructor con `this(3, 3, 3, 0, 0, 0)` (3 en cada atributo y vida/maná/oro provisorios en 0), y después, como ya existen las fórmulas, pone la vida y el maná en su máximo y agrega la habilidad Ataque.
-2. `Jugador(fuerza, destreza, inteligencia, vida, mana, oro)`: para **cargar** una partida. Valida cada atributo (entre 1 y 20), y deja la vida y el maná dentro de sus límites con `limitar`. No agrega habilidades: las agrega quien carga.
-
-`this(...)` en la primera línea de un constructor significa "usá el otro constructor para lo básico".
+1. `Jugador(Clase clase)`: una partida nueva. Llama al constructor completo con los atributos de la clase y vida/maná provisorios en 0; después, como ya existen las fórmulas, pone la vida y el maná en su máximo y agrega el **hechizo inicial** de la clase al repertorio.
+2. `Jugador()`: el héroe por defecto (Druida, 3/3/3). Lo usan sobre todo las pruebas.
+3. `Jugador(clase, fuerza, destreza, inteligencia, vida, mana, oro)`: para **cargar** una partida. Valida cada atributo (entre 1 y 20), crea el arma de la clase y deja la vida y el maná dentro de sus límites con `limitar`. No agrega hechizos: los agrega quien carga.
+4. La versión sin clase delega en la anterior con Druida.
 
 **Por qué la vida inicial se pone después:** `getVidaMaxima()` usa `fuerza`, que recién tiene valor cuando el otro constructor terminó.
 
@@ -1149,6 +1514,10 @@ public int getVidaMaxima() {
 
 public int getManaMaximo() {
     return 6 + 3 * inteligencia;
+}
+
+public int getEnergiaMaxima() {
+    return 6 + 2 * destreza;
 }
 
 public int getDefensa() {
@@ -1183,25 +1552,61 @@ Estas son las **fórmulas**. Se calculan cada vez que se piden (no se guardan), 
 |---|---|---|
 | `getVidaMaxima` | 20 + 5 × Fuerza | Más Fuerza, más vida |
 | `getManaMaximo` | 6 + 3 × Inteligencia | |
+| `getEnergiaMaxima` | 6 + 2 × Destreza | Cuántos golpes de arma aguanta el héroe |
 | `getDefensa` | Destreza ÷ 2 (entera) | Resta daño recibido |
-| `getDanioFisico` | 2 + 2 × Fuerza | Daño del ataque con arma |
-| `getPotenciaMagica` | 3 + 3 × Inteligencia | Daño del golpe arcano |
-| `getPotenciaCuracion` | 6 + 3 × Inteligencia | Cuánto cura |
+| `getDanioFisico` | 2 + 2 × Fuerza | Base del daño del arma y del Tajo |
+| `getPotenciaMagica` | 3 + 3 × Inteligencia | Daño del Golpe arcano y la Savia |
+| `getPotenciaCuracion` | 6 + 3 × Inteligencia | Cuánto cura la Luz sanadora |
 | `getBonusZonaCritica` | 4 × Destreza | Píxeles extra de zona crítica en la barra |
 | `getFactorVelocidadBarra` | 1 − 0,03 × Destreza, pero nunca menos que 0,5 | Cursor más lento |
 
 `Math.max(0.5, ...)` pone un **piso** al factor: aunque la Destreza fuera enorme, el cursor nunca se detiene del todo.
 
-### Recibir daño, curarse, gastar maná
+### Recibir daño, guardia, veneno, curarse
 
 ```java
 public int recibirDanio(int danioBruto) {
     if (danioBruto < 0) {
         throw new IllegalArgumentException("el daño no puede ser negativo: " + danioBruto);
     }
+    if (guardia) {
+        danioBruto = danioBruto / 2;
+    }
     int real = Math.max(1, danioBruto - getDefensa());
     vida = Math.max(0, vida - real);
     return real;
+}
+
+// Veneno: se aplica al terminar el turno del héroe
+public void envenenar(int turnos, int danio) {
+    veneno.aplicar(turnos, danio);
+}
+
+// Devuelve el daño que hizo el veneno en este turno (0 si no estaba envenenado)
+public int aplicarVeneno() {
+    int danio = veneno.pasarTurno();
+    vida = Math.max(0, vida - danio);
+    return danio;
+}
+
+public boolean estaEnvenenado() {
+    return veneno.estaActivo();
+}
+
+// Guardia: mientras dura la ronda, los golpes recibidos valen la mitad
+public void setGuardia(boolean activa) {
+    guardia = activa;
+}
+
+public boolean estaEnGuardia() {
+    return guardia;
+}
+
+// Al empezar un combate: energía llena y sin estados de la pelea anterior
+public void prepararCombate() {
+    energia = getEnergiaMaxima();
+    guardia = false;
+    veneno.limpiar();
 }
 
 // Devuelve cuánta vida se recuperó realmente
@@ -1219,8 +1624,10 @@ public boolean estaMuerto() {
 }
 ```
 
-- `recibirDanio(danioBruto)`: rechaza daños negativos. El daño real es `danioBruto - defensa`, pero **como mínimo 1** (`Math.max(1, ...)`): la defensa nunca vuelve invulnerable al héroe. La vida baja pero **nunca por debajo de 0** (`Math.max(0, ...)`). Devuelve el daño real para poder mostrarlo.
-- `curar(cantidad)`: la vida sube pero no pasa de la máxima (`Math.min`). Devuelve lo realmente curado (`vida - antes`).
+- `recibirDanio(danioBruto)`: rechaza daños negativos. Si la **guardia** está activa, el daño bruto se divide por 2 (`Defender` en combate). El daño real es `danioBruto - defensa`, pero **como mínimo 1** (`Math.max(1, ...)`): la defensa nunca vuelve invulnerable al héroe. La vida baja pero **nunca por debajo de 0**. Devuelve el daño real para poder mostrarlo.
+- `envenenar` / `aplicarVeneno` / `estaEnvenenado` **delegan** en el `EstadoVeneno` interno. `aplicarVeneno` resta la vida y devuelve el daño que hizo.
+- `prepararCombate()` se llama al **empezar cada combate**: llena la energía, apaga la guardia y limpia el veneno. Por eso un veneno **no pasa de una pelea a la siguiente**.
+- `curar(cantidad)`: la vida sube pero no pasa de la máxima. Devuelve lo realmente curado.
 - `estaMuerto()`: vida en 0.
 
 ```java
@@ -1240,6 +1647,24 @@ public boolean puedePagar(int costoMana) {
     return mana >= costoMana;
 }
 
+public boolean puedePagarEnergia(int costoEnergia) {
+    return energia >= costoEnergia;
+}
+
+public void gastarEnergia(int cantidad) {
+    if (cantidad < 0 || cantidad > energia) {
+        throw new IllegalArgumentException("energía insuficiente: se pide " + cantidad + " y hay " + energia);
+    }
+    energia = energia - cantidad;
+}
+
+public void recuperarEnergia(int cantidad) {
+    if (cantidad < 0) {
+        throw new IllegalArgumentException("la energía a recuperar no puede ser negativa: " + cantidad);
+    }
+    energia = Math.min(getEnergiaMaxima(), energia + cantidad);
+}
+
 public void gastarMana(int cantidad) {
     if (cantidad < 0 || cantidad > mana) {
         throw new IllegalArgumentException("maná insuficiente: se pide " + cantidad + " y hay " + mana);
@@ -1257,6 +1682,7 @@ public void mejorarAtributo(int cual, int cantidad) {
         vida = Math.min(getVidaMaxima(), vida + 5 * cantidad);
     } else if (cual == DESTREZA) {
         destreza = Math.min(ATRIBUTO_MAXIMO, destreza + cantidad);
+        energia = Math.min(getEnergiaMaxima(), energia + 2 * cantidad);
     } else if (cual == INTELIGENCIA) {
         inteligencia = Math.min(ATRIBUTO_MAXIMO, inteligencia + cantidad);
         mana = Math.min(getManaMaximo(), mana + 3 * cantidad);
@@ -1268,10 +1694,31 @@ public void mejorarAtributo(int cual, int cantidad) {
 
 - `cambiarVida(delta)`, `cambiarMana(delta)` y `cambiarOro(delta)` los usan los **eventos** (el delta puede ser positivo o negativo). `limitar(valor, minimo, maximo)` es un método privado que mantiene el valor dentro del rango.
 - **Un evento nunca mata:** `cambiarVida` limita la vida a un mínimo de **1**. En cambio, el combate sí puede dejarla en 0 (`recibirDanio`).
-- `gastarMana`: lanza `IllegalArgumentException` si se pide más maná del que hay. Quien la llama debe preguntar antes con `puedePagar` (lo hace `Combate.elegirHabilidad`).
-- `mejorarAtributo(cual, cantidad)`: sube el atributo (con tope 20) y, además, **sube también la vida o el maná actual** en lo que aumentó el máximo (Fuerza: +5 por punto; Inteligencia: +3 por punto). Si no, un héroe que sube Fuerza tendría el máximo más alto pero la barra de vida igual de vacía. Un atributo desconocido lanza `IllegalArgumentException`.
+- `gastarMana` y `gastarEnergia`: lanzan `IllegalArgumentException` si se pide más de lo que hay. Quien las llama debe preguntar antes con `puedePagar` / `puedePagarEnergia` (lo hace `Combate.iniciarAccion`).
+- `recuperarEnergia(cantidad)`: suma sin pasar del máximo (`Math.min`).
+- `mejorarAtributo(cual, cantidad)`: sube el atributo (con tope 20) y, además, **sube también la vida, el maná o la energía actual** en lo que aumentó el máximo. Si no, un héroe que sube Fuerza tendría el máximo más alto pero la barra de vida igual de vacía. Un atributo desconocido lanza `IllegalArgumentException`.
 
-### El repertorio de habilidades (la lista enlazada en acción)
+```java
+public boolean puedePagarEnergia(int costoEnergia) {
+    return energia >= costoEnergia;
+}
+
+public void gastarEnergia(int cantidad) {
+    if (cantidad < 0 || cantidad > energia) {
+        throw new IllegalArgumentException("energía insuficiente: se pide " + cantidad + " y hay " + energia);
+    }
+    energia = energia - cantidad;
+}
+
+public void recuperarEnergia(int cantidad) {
+    if (cantidad < 0) {
+        throw new IllegalArgumentException("la energía a recuperar no puede ser negativa: " + cantidad);
+    }
+    energia = Math.min(getEnergiaMaxima(), energia + cantidad);
+}
+```
+
+### El repertorio de hechizos (la lista enlazada en acción)
 
 ```java
 public boolean aprenderHabilidad(Habilidad nueva) {
@@ -1294,16 +1741,13 @@ public boolean conoceHabilidad(String codigo) {
     return false;
 }
 
-public Habilidad getHabilidad(int indice) {
-    return habilidades.obtener(indice);
-}
+```
 
-public int cantidadHabilidades() {
-    return habilidades.tamanio();
-}
-
-// Código de la primera habilidad del catálogo que todavía no se conoce (null si ya las tiene todas)
+```java
 public String proximaHabilidadPorAprender() {
+    if (habilidades.tamanio() >= MAX_HABILIDADES) {
+        return null;
+    }
     for (int i = 0; i < CatalogoHabilidades.CANTIDAD; i++) {
         String codigo = CatalogoHabilidades.codigoPorOrden(i);
         if (!conoceHabilidad(codigo)) {
@@ -1316,13 +1760,13 @@ public String proximaHabilidadPorAprender() {
 
 - `aprenderHabilidad`: rechaza `null`; devuelve `false` si el héroe **ya la conoce** o si el repertorio **ya está lleno** (4); si no, la agrega a la lista y devuelve `true`.
 - `conoceHabilidad(codigo)`: recorre la lista con un `for` y `obtener(i)` comparando códigos.
-- `proximaHabilidadPorAprender()`: recorre el **catálogo** en orden y devuelve el código de la primera que el héroe todavía no conoce, o `null` si ya las sabe todas. La usa el cofre.
+- `proximaHabilidadPorAprender()`: devuelve `null` si **ya tiene 4 hechizos** (no hay lugar) y, si no, recorre el **catálogo** en orden y devuelve el código del primer hechizo que todavía no conoce (o `null` si ya los sabe todos). La usa el cofre.
 
 ---
 
-### 5.6 `Enemigo` (abstracta)
+### 5.9 `Enemigo` (abstracta)
 
-**Para qué sirve:** ser el molde de los enemigos: vida, daño, recompensa y los métodos comunes. Cada enemigo concreto decide **cómo ataca**.
+**Para qué sirve:** ser el molde de los enemigos: vida, daño, recompensa, veneno y los métodos comunes. Cada enemigo concreto decide **cómo ataca**.
 
 ```java
 public abstract class Enemigo {
@@ -1335,6 +1779,7 @@ public abstract class Enemigo {
     private int danio;
     private final int recompensaOro;
     private int acciones;
+    private final EstadoVeneno veneno = new EstadoVeneno();
 
     // Constructor
     protected Enemigo(String nombre, String sprite, int vidaMaxima, int danio, int recompensaOro) {
@@ -1356,7 +1801,7 @@ public abstract class Enemigo {
     }
 ```
 
-El constructor valida todo (nombre, vida positiva, daño y recompensa no negativos). `vida` empieza igual a `vidaMaxima`. `acciones` cuenta cuántas veces actuó el enemigo (lo usan el Brujo y el Rey).
+El constructor valida todo (nombre, vida positiva, daño y recompensa no negativos). `vida` empieza igual a `vidaMaxima`. `acciones` cuenta cuántas veces actuó el enemigo (lo usan el Brujo, el Rey, la Araña y el Golem). Igual que el `Jugador`, tiene un `EstadoVeneno` por **composición**.
 
 ```java
 protected abstract String accionar(Jugador jugador, int numeroDeAccion);
@@ -1387,6 +1832,22 @@ public int recibirDanio(int cantidad) {
     return real;
 }
 
+// Veneno (lo aplica la Daga envenenada del héroe). Se cobra al terminar el turno del enemigo.
+public void envenenar(int turnos, int danio) {
+    veneno.aplicar(turnos, danio);
+}
+
+// Devuelve el daño que hizo el veneno en este turno (0 si no estaba envenenado)
+public int aplicarVeneno() {
+    int danio = veneno.pasarTurno();
+    vida = Math.max(0, vida - danio);
+    return danio;
+}
+
+public boolean estaEnvenenado() {
+    return veneno.estaActivo();
+}
+
 protected void curar(int cantidad) {
     vida = Math.min(vidaMaxima, vida + cantidad);
 }
@@ -1400,8 +1861,9 @@ protected void curar(int cantidad) {
 Otros métodos:
 
 - `reforzar(piso)`: los enemigos de los pisos altos son más duros (+3 de vida por piso, +1 de daño cada 2 pisos).
-- `recibirDanio`: `Math.min(vida, cantidad)` evita que la vida quede negativa y **devuelve el daño real** (si le quedaban 5 de vida y le pegás 16, el daño real es 5).
-- `curar` es `protected`: solo las hijas (el Brujo) pueden curarse.
+- `recibirDanio`: `Math.min(vida, cantidad)` evita que la vida quede negativa y **devuelve el daño real**.
+- `envenenar` / `aplicarVeneno` / `estaEnvenenado`: igual que en el jugador, delegan en el `EstadoVeneno`. Lo usa la Daga envenenada.
+- `curar` es `protected`: solo las hijas (el Brujo, el Espectro) pueden curarse.
 
 ```java
 public class Esqueleto extends Enemigo {
@@ -1483,64 +1945,157 @@ public class ReyOscuro extends Enemigo {
 }
 ```
 
-Los cuatro enemigos comparten la forma: un constructor que llama a `super(nombre, sprite, vida, daño, oro)` y un método `accionar`.
+Los cuatro primeros enemigos comparten la forma: un constructor que llama a `super(nombre, sprite, vida, daño, oro)` y un método `accionar`.
+
+```java
+public class Goblin extends Enemigo {
+
+    // Constantes
+    private static final int ROBO = 3;
+
+    // Constructor
+    public Goblin() {
+        super("Goblin", "goblin", 12, 4, 8);
+    }
+
+    @Override
+    protected String accionar(Jugador jugador, int numeroDeAccion) {
+        int real = jugador.recibirDanio(getDanio());
+        int robado = Math.min(jugador.getOro(), ROBO);
+        jugador.cambiarOro(-robado);
+        if (robado > 0) {
+            return "El Goblin te apuñala: -" + real + " de vida, y te roba " + robado + " de oro.";
+        }
+        return "El Goblin te apuñala: -" + real + " de vida. ¡Revisa tus bolsillos vacíos!";
+    }
+}
+```
+
+```java
+public class Arana extends Enemigo {
+
+    // Constantes
+    private static final int TURNOS_VENENO = 3;
+    private static final int DANIO_VENENO = 2;
+
+    // Constructor
+    public Arana() {
+        super("Araña", "arana", 13, 3, 6);
+    }
+
+    @Override
+    protected String accionar(Jugador jugador, int numeroDeAccion) {
+        int real = jugador.recibirDanio(getDanio());
+        if (numeroDeAccion % 2 == 1) {
+            jugador.envenenar(TURNOS_VENENO, DANIO_VENENO);
+            return "La Araña te muerde: -" + real + " de vida. ¡Su veneno te quemará " + TURNOS_VENENO + " turnos!";
+        }
+        return "La Araña te muerde: -" + real + " de vida.";
+    }
+}
+```
+
+```java
+public class Golem extends Enemigo {
+
+    // Constructor
+    public Golem() {
+        super("Golem", "golem", 30, 6, 12);
+    }
+
+    @Override
+    protected String accionar(Jugador jugador, int numeroDeAccion) {
+        if (numeroDeAccion % 2 == 1) {
+            return "El Golem alza sus puños de roca. ¡Va a golpear!";
+        }
+        int real = jugador.recibirDanio(getDanio() * 2);
+        return "El Golem descarga sus puños de piedra: -" + real + " de vida.";
+    }
+}
+```
+
+```java
+public class Espectro extends Enemigo {
+
+    // Constructor
+    public Espectro() {
+        super("Espectro", "espectro", 12, 5, 9);
+    }
+
+    @Override
+    protected String accionar(Jugador jugador, int numeroDeAccion) {
+        int real = jugador.recibirDanio(getDanio());
+        int antes = getVida();
+        curar(real / 2);
+        int recuperado = getVida() - antes;
+        if (recuperado > 0) {
+            return "El Espectro te toca con frío de tumba: -" + real + " de vida. Absorbe " + recuperado + ".";
+        }
+        return "El Espectro te toca con frío de tumba: -" + real + " de vida.";
+    }
+}
+```
 
 | Enemigo | Vida | Daño | Particularidad | Cómo se logra |
 |---|---|---|---|---|
 | `Esqueleto` | 18 | 5 | Resistente, golpe parejo | Solo `accionar` |
 | `Lobo` | 14 | 3 | **Actúa dos veces por ronda** | Sobrescribe `getTurnosPorRonda()` y devuelve 2: `Combate` encola dos turnos suyos |
+| `Goblin` | 12 | 4 | **Roba hasta 3 de oro** | `Math.min(jugador.getOro(), ROBO)` para no dejar el oro en negativo |
+| `Arana` | 13 | 3 | **Envenena** en sus acciones impares | `numeroDeAccion % 2 == 1` y `jugador.envenenar(...)` |
 | `Brujo` | 16 | 6 | **Cada 3.ª acción se cura 5** en lugar de atacar | `numeroDeAccion % 3 == 0` |
+| `Espectro` | 12 | 5 | **Se cura la mitad del daño que causa** | `curar(real / 2)` (método protegido) |
+| `Golem` | 30 | 6 | **Prepara el golpe** un turno y después pega doble | Acciones impares solo avisan; las pares pegan `getDanio() * 2` |
 | `ReyOscuro` | 60 | 8 | **Cada 4.ª acción pega doble** | `numeroDeAccion % 4 == 0` |
 
 `numeroDeAccion % 3 == 0` significa "el resto de dividir por 3 es 0", o sea, la acción número 3, 6, 9...
 
-El Lobo es un buen ejemplo de **diseño dirigido por datos**: para que actúe dos veces no hay ninguna condición especial en `Combate`; solo cambia cuántas veces se encola.
+Cada enemigo nuevo se agregó **sin tocar `Combate`**: es la ventaja del polimorfismo. `Combate` solo sabe llamar a `enemigo.atacar(jugador)`.
 
-### 5.7 `FabricaEnemigos`
+### 5.10 `FabricaEnemigos`
+
+```java
+public static int tiposDisponibles(int piso) {
+    if (piso <= 1) {
+        return 3;
+    }
+    if (piso == 2) {
+        return 4;
+    }
+    if (piso == 3) {
+        return 6;
+    }
+    return 7;
+}
+```
 
 ```java
 public static Enemigo crearAleatorio(int piso, Random azar) {
-    int tipos = 2;
-    if (piso >= 3) {
-        tipos = 3;
-    }
-    int elegido = azar.nextInt(tipos);
+    int elegido = azar.nextInt(tiposDisponibles(piso));
     Enemigo enemigo;
     if (elegido == 0) {
         enemigo = new Esqueleto();
     } else if (elegido == 1) {
         enemigo = new Lobo();
-    } else {
+    } else if (elegido == 2) {
+        enemigo = new Goblin();
+    } else if (elegido == 3) {
+        enemigo = new Arana();
+    } else if (elegido == 4) {
         enemigo = new Brujo();
+    } else if (elegido == 5) {
+        enemigo = new Espectro();
+    } else {
+        enemigo = new Golem();
     }
     enemigo.reforzar(piso);
     return enemigo;
-}
-
-// Enemigo por nombre (lo usan las emboscadas escritas en eventos.txt)
-public static Enemigo crearPorNombre(String nombre, int piso) {
-    Enemigo enemigo;
-    if ("ESQUELETO".equals(nombre)) {
-        enemigo = new Esqueleto();
-    } else if ("LOBO".equals(nombre)) {
-        enemigo = new Lobo();
-    } else if ("BRUJO".equals(nombre)) {
-        enemigo = new Brujo();
-    } else {
-        throw new IllegalArgumentException("enemigo desconocido: " + nombre);
-    }
-    enemigo.reforzar(piso);
-    return enemigo;
-}
-
-public static Enemigo crearJefe() {
-    return new ReyOscuro();
 }
 ```
 
-- `crearAleatorio(piso, azar)`: elige un tipo al azar con `azar.nextInt(tipos)`, que da un número entre 0 y `tipos - 1`. Hasta el piso 2 hay 2 tipos posibles (Esqueleto, Lobo) y **desde el piso 3 se suma el Brujo**. Después lo `reforzar(piso)`.
+- `tiposDisponibles(piso)` dice **cuántos tipos** pueden aparecer: 3 en el piso 1 (Esqueleto, Lobo, Goblin), 4 en el 2 (se suma la Araña), 6 en el 3 (Brujo y Espectro) y 7 desde el 4 (Golem). Así **la variedad crece** a medida que se avanza.
+- `crearAleatorio(piso, azar)`: elige con `azar.nextInt(tipos)` (un número de 0 a `tipos - 1`) y crea el enemigo con una cadena de `if`. Después lo `reforzar(piso)`.
 - Recibe el `Random` por parámetro (en vez de crear uno): así quien llama controla la semilla y el resultado es **repetible** (lo aprovecha `Partida`).
-- `crearPorNombre` se usa para las emboscadas escritas en `eventos.txt` (`COMBATE:LOBO`).
+- `crearPorNombre` se usa para las emboscadas escritas en `eventos.txt` (`COMBATE:LOBO`, `COMBATE:ARANA`...).
 - `crearJefe` devuelve el Rey Oscuro sin refuerzo.
 
 Es una **clase de utilidad** (constructor privado, métodos estáticos).
@@ -1551,9 +2106,93 @@ Es una **clase de utilidad** (constructor privado, métodos estáticos).
 
 Las reglas del juego: cómo funciona un combate, cómo se genera el mapa, qué es una partida, qué es un evento. **Tampoco dibuja nada.**
 
-### 6.1 `BarraPrecision`
+### 6.1 Los minijuegos: `Minijuego`, `BarraPrecision`, `MinijuegoRafaga`, `MinijuegoAnillo` y `Dificultad`
 
-**Para qué sirve:** el minijuego estilo Undertale. Un cursor va y viene sobre una barra; el jugador lo frena y, según qué tan cerca del centro quedó, el golpe es **fallo**, **normal** o **crítico**. La **Destreza** lo vuelve más fácil.
+**Para qué sirven:** cada vez que el héroe ataca con el arma, los puños o un hechizo ofensivo, se juega **un minijuego de habilidad** que decide si el golpe es **fallo**, **normal** o **crítico**. Hay tres, y `Combate` elige uno **al azar** (50 % barra, 25 % ráfaga, 25 % anillo) para que no se vuelva repetitivo.
+
+`Minijuego` es una clase **abstracta** que define lo común (¿terminó?, ¿cuál fue el resultado?) y obliga a cada hijo a decir cómo avanza el tiempo (`actualizar`), qué pasa al apretar ESPACIO (`pulsar`) y qué tipo es (`getTipo`): un **polimorfismo** idéntico al de las habilidades.
+
+```java
+public abstract class Minijuego {
+
+    // Tipos (la pantalla los usa para saber cómo dibujar)
+    public static final int TIPO_BARRA = 0;
+    public static final int TIPO_RAFAGA = 1;
+    public static final int TIPO_ANILLO = 2;
+
+    // Atributos
+    private boolean terminado;
+    private int resultado = Calidad.FALLO;
+
+    // El tiempo avanza (se llama en cada cuadro)
+    public abstract void actualizar(double dt);
+
+    // El jugador apretó ESPACIO
+    public abstract void pulsar();
+
+    public abstract int getTipo();
+
+    // Texto de ayuda que se muestra al jugador
+    public abstract String getInstruccion();
+
+    // Cierra el minijuego con una calidad. Solo vale la primera vez.
+    protected void terminar(int calidad) {
+        if (!terminado) {
+            terminado = true;
+            resultado = calidad;
+        }
+    }
+
+    public boolean estaTerminado() {
+        return terminado;
+    }
+
+    public int getResultado() {
+        return resultado;
+    }
+}
+```
+
+- `terminar(calidad)` es `protected` y **solo vale la primera vez** (`if (!terminado)`): una vez resuelto el minijuego, un segundo ESPACIO no puede cambiar el resultado.
+- `Combate` solo guarda un `Minijuego` y llama a `actualizar` y `pulsar`. No necesita saber cuál de los tres es; **la pantalla** usa `getTipo()` para saber cómo dibujarlo.
+
+#### La dificultad creciente: `Dificultad`
+
+```java
+public final class Dificultad {
+
+    // Constantes
+    public static final int NIVEL_MAXIMO = 12;
+
+    // Sin instancias
+    private Dificultad() {
+    }
+
+    // Nivel dentro del rango válido (0 a NIVEL_MAXIMO)
+    public static int limitarNivel(int nivel) {
+        return Math.max(0, Math.min(NIVEL_MAXIMO, nivel));
+    }
+
+    // Multiplicador de velocidad: 1.0 en el nivel 0, 1.72 en el nivel máximo
+    public static double factorVelocidad(int nivel) {
+        return 1.0 + 0.06 * limitarNivel(nivel);
+    }
+
+    // Multiplicador del tamaño de las zonas de acierto: 1.0 en el nivel 0, 0.64 en el nivel máximo
+    public static double factorZona(int nivel) {
+        return 1.0 - 0.03 * limitarNivel(nivel);
+    }
+}
+```
+
+- El **nivel** es la cantidad de enemigos derrotados en la aventura, con **tope en 12** (`limitarNivel`): así el juego se vuelve más difícil de a poco, pero **nunca imposible**.
+- `factorVelocidad(nivel)` va de 1,0 (nivel 0) a 1,72 (nivel 12): los cursores y anillos se mueven más rápido.
+- `factorZona(nivel)` va de 1,0 a 0,64: las zonas de acierto se achican.
+- Es una **clase de utilidad** (constructor privado, métodos `static`): no tiene estado.
+
+#### El primer minijuego: la barra de precisión
+
+Un cursor va y viene sobre una barra; el jugador lo frena y, según qué tan cerca del centro quedó, el golpe es **fallo**, **normal** o **crítico**. La **Destreza** lo vuelve más fácil y el **nivel** más difícil.
 
 ```
 |------ fallo ------|-------- normal --------|[crítico]|-------- normal --------|------ fallo ------|
@@ -1573,44 +2212,46 @@ private final double velocidad;
 private double posicion;
 private int direccion = 1;
 private boolean detenida;
-private int resultado = Calidad.FALLO;
 ```
 
 - `ANCHO = 600`: la barra mide 600 unidades (píxeles en pantalla). Posiciones: de 0 a 600; el centro es 300.
 - Las constantes `..._BASE` son los valores de referencia con dificultad 1.0 y sin Destreza.
+- `BarraPrecision` **extiende** `Minijuego` (la barra *es un* minijuego).
 - `anchoCritico` y `anchoNormal` son los anchos **totales** de cada zona (centradas en 300). `velocidad` es en unidades por segundo.
 - `posicion` es dónde está el cursor; `direccion` vale 1 (va hacia la derecha) o -1 (hacia la izquierda); `detenida` pasa a `true` cuando el jugador la frena.
 
 ```java
-public BarraPrecision(Jugador jugador, double dificultad) {
-    this(jugador.getBonusZonaCritica(), jugador.getFactorVelocidadBarra(), dificultad);
+public BarraPrecision(Jugador jugador, double dificultad, int nivel) {
+    this(jugador.getBonusZonaCritica(), jugador.getFactorVelocidadBarra(), dificultad, nivel);
 }
 ```
 
 ```java
-public BarraPrecision(int bonusCritico, double factorVelocidad, double dificultad) {
+public BarraPrecision(int bonusCritico, double factorVelocidad, double dificultad, int nivel) {
     if (!(dificultad > 0 && dificultad <= 1.5)) {
         throw new IllegalArgumentException("dificultad fuera de rango: " + dificultad);
     }
     if (!(factorVelocidad > 0)) {
         throw new IllegalArgumentException("el factor de velocidad debe ser positivo: " + factorVelocidad);
     }
-    this.anchoCritico = (ANCHO_CRITICO_BASE + bonusCritico) * dificultad;
-    this.anchoNormal = ANCHO_NORMAL_BASE * (0.5 + 0.5 * dificultad);
-    this.velocidad = VELOCIDAD_BASE * factorVelocidad * (2.0 - dificultad);
+    double zona = Dificultad.factorZona(nivel);
+    this.anchoCritico = (ANCHO_CRITICO_BASE + bonusCritico) * dificultad * zona;
+    this.anchoNormal = ANCHO_NORMAL_BASE * (0.5 + 0.5 * dificultad) * (1.0 + zona) / 2.0;
+    this.velocidad = VELOCIDAD_BASE * factorVelocidad * (2.0 - dificultad) * Dificultad.factorVelocidad(nivel);
 }
 ```
 
-Dos constructores:
+Hay **cuatro constructores** encadenados con `this(...)` (los cortos existen por comodidad y para las pruebas):
 
-1. El principal recibe el `Jugador` y la dificultad de la habilidad, y llama al segundo con `this(...)` pasándole **los datos del jugador**: aquí entra la **Destreza** (`getBonusZonaCritica`, `getFactorVelocidadBarra`).
-2. El segundo recibe números sueltos (sirve para hacer pruebas sin crear un jugador). Valida que la dificultad esté entre 0 y 1,5 y que el factor de velocidad sea positivo. Escribe la condición como `!(x > 0 && x <= 1.5)` para que un valor `NaN` (no es un número) también sea rechazado.
+1. Con `Jugador`, dificultad y **nivel**: llama al completo pasándole **los datos del jugador**: aquí entra la **Destreza** (`getBonusZonaCritica`, `getFactorVelocidadBarra`).
+2. Con `Jugador` y dificultad (nivel 0), y con números sueltos (sin jugador): sirven para las pruebas.
+3. El completo recibe todos los números. Valida que la dificultad esté entre 0 y 1,5 y que el factor de velocidad sea positivo. Escribe la condición como `!(x > 0 && x <= 1.5)` para que un valor `NaN` (no es un número) también sea rechazado.
 
-Las fórmulas:
+Las fórmulas (con `zona` = `Dificultad.factorZona(nivel)`):
 
-- `anchoCritico = (40 + bonus) × dificultad`. Con Destreza 3 y dificultad 1: (40 + 12) × 1 = **52**. Con el golpe arcano (0,6): 52 × 0,6 = 31,2: mucho más difícil de acertar.
-- `anchoNormal = 420 × (0,5 + 0,5 × dificultad)`. Con dificultad 1 son 420; con 0,6 son 336.
-- `velocidad = 560 × factor × (2 − dificultad)`. Con dificultad menor, el término `(2 − dificultad)` es mayor: el cursor va **más rápido**. Con más Destreza el factor es menor: va **más lento**.
+- `anchoCritico = (40 + bonus) × dificultad × zona`. Con Destreza 3, dificultad 1 y nivel 0: (40 + 12) = **52**. Con el golpe arcano (0,6): 31,2: mucho más difícil de acertar. Con nivel 12 la zona se multiplica por 0,64.
+- `anchoNormal = 420 × (0,5 + 0,5 × dificultad)` ajustado por el nivel.
+- `velocidad = 560 × factor × (2 − dificultad) × factorVelocidad(nivel)`. Con dificultad menor, `(2 − dificultad)` es mayor: el cursor va **más rápido**. Con más Destreza el factor es menor: va **más lento**. Con más nivel, va **más rápido**.
 
 ```java
 public void actualizar(double dt) {
@@ -1630,8 +2271,23 @@ public void actualizar(double dt) {
 // El jugador apretó ESPACIO: se frena el cursor y se mide el resultado
 public int detener() {
     detenida = true;
-    resultado = calidadEn(posicion);
-    return resultado;
+    terminar(calidadEn(posicion));
+    return getResultado();
+}
+
+@Override
+public void pulsar() {
+    detener();
+}
+
+@Override
+public int getTipo() {
+    return TIPO_BARRA;
+}
+
+@Override
+public String getInstruccion() {
+    return "¡Frena la barra con ESPACIO!";
 }
 
 // Calidad que daría un golpe frenado en esa posición
@@ -1647,8 +2303,9 @@ public int calidadEn(double x) {
 }
 ```
 
+- `@Override` marca que `actualizar`, `pulsar`, `getTipo` y `getInstruccion` **implementan** lo que pide `Minijuego`.
 - `actualizar(dt)` se llama en cada cuadro del juego. `dt` es el tiempo en segundos desde el cuadro anterior (en este motor siempre 1/120 s). El cursor avanza `direccion * velocidad * dt` unidades. Al llegar a un extremo se lo deja justo en el borde y se invierte la dirección (**rebota**). Si la barra está detenida no hace nada.
-- `detener()` es lo que pasa al apretar ESPACIO: marca la barra como detenida y calcula el resultado con `calidadEn(posicion)`.
+- `detener()` (y `pulsar()`, que simplemente lo llama) es lo que pasa al apretar ESPACIO: marca la barra como detenida y cierra el minijuego con `terminar(calidadEn(posicion))`.
 - `calidadEn(x)` mide la **distancia al centro** (`Math.abs(x - 300)`):
   - Si la distancia es ≤ la mitad del ancho crítico → `CRITICO`.
   - Si es ≤ la mitad del ancho normal → `NORMAL`.
@@ -1656,6 +2313,207 @@ public int calidadEn(double x) {
 
   Se compara con la **mitad** del ancho porque cada zona se extiende hacia los dos lados del centro.
 - `setPosicion` existe para las pruebas (poner el cursor en un lugar exacto) y valida que no se salga de la barra.
+
+#### El segundo minijuego: la ráfaga
+
+Hay que **machacar ESPACIO** todo lo posible durante 2,5 segundos. Si se llega al objetivo crítico, termina enseguida con crítico; si no, al acabarse el tiempo se mide cuántos golpes hubo.
+
+```java
+public class MinijuegoRafaga extends Minijuego {
+
+    // Constantes
+    public static final double DURACION = 2.5;
+
+    // Atributos
+    private final int objetivoNormal;
+    private final int objetivoCritico;
+    private int golpes;
+    private double tiempo;
+
+    // Constructor principal
+    public MinijuegoRafaga(Jugador jugador, double dificultad, int nivel) {
+        this(jugador.getDestreza(), dificultad, nivel);
+    }
+
+    // Constructor con números sueltos (útil para las pruebas)
+    public MinijuegoRafaga(int destreza, double dificultad, int nivel) {
+        if (!(dificultad > 0 && dificultad <= 1.5)) {
+            throw new IllegalArgumentException("dificultad fuera de rango: " + dificultad);
+        }
+        int n = Dificultad.limitarNivel(nivel);
+        int normal = (int) Math.round((6 + n / 2 - destreza / 4) / dificultad);
+        int critico = (int) Math.round((13 + n - destreza / 3) / dificultad);
+        this.objetivoNormal = Math.max(3, normal);
+        this.objetivoCritico = Math.min(26, Math.max(this.objetivoNormal + 2, critico));
+    }
+
+    @Override
+    public void actualizar(double dt) {
+        if (estaTerminado()) {
+            return;
+        }
+        tiempo = tiempo + dt;
+        if (tiempo >= DURACION) {
+            terminar(calidadConGolpes(golpes));
+        }
+    }
+
+    @Override
+    public void pulsar() {
+        if (estaTerminado()) {
+            return;
+        }
+        golpes++;
+        if (golpes >= objetivoCritico) {
+            terminar(Calidad.CRITICO);
+        }
+    }
+
+    // Calidad que daría esa cantidad de golpes al acabarse el tiempo
+    public int calidadConGolpes(int cantidad) {
+        if (cantidad >= objetivoCritico) {
+            return Calidad.CRITICO;
+        }
+        if (cantidad >= objetivoNormal) {
+            return Calidad.NORMAL;
+        }
+        return Calidad.FALLO;
+    }
+
+    @Override
+    public int getTipo() {
+        return TIPO_RAFAGA;
+    }
+
+    @Override
+    public String getInstruccion() {
+        return "¡Machaca ESPACIO lo más rápido que puedas!";
+    }
+
+    public int getGolpes() {
+        return golpes;
+    }
+
+    public int getObjetivoNormal() {
+        return objetivoNormal;
+    }
+
+    public int getObjetivoCritico() {
+        return objetivoCritico;
+    }
+
+    public double getTiempoRestante() {
+        return Math.max(0, DURACION - tiempo);
+    }
+}
+```
+
+- Los **objetivos** (cuántos golpes hacen falta) suben con el nivel (`6 + n/2` para normal y `13 + n` para crítico) y bajan un poco con la Destreza; se dividen por la dificultad de la habilidad. Se redondean con `Math.round`, con un mínimo para que siempre sea posible, y el crítico siempre está al menos 2 golpes por encima del normal.
+- `actualizar` suma el tiempo y, al llegar a `DURACION`, cierra el minijuego con `calidadConGolpes(golpes)`.
+- `pulsar` suma un golpe; si llega al objetivo crítico, termina enseguida.
+
+#### El tercer minijuego: el anillo
+
+Un círculo se achica hacia una **marca fija**. Hay que apretar ESPACIO justo cuando coincide con la marca. Si pasa de largo, es fallo.
+
+```java
+public class MinijuegoAnillo extends Minijuego {
+
+    // Constantes
+    public static final double RADIO_INICIAL = 130;
+    public static final double RADIO_OBJETIVO = 40;
+    private static final double DURACION_BASE = 1.9;
+
+    // Atributos
+    private final double duracion;
+    private final double toleranciaCritica;
+    private final double toleranciaNormal;
+    private double tiempo;
+
+    // Constructor principal
+    public MinijuegoAnillo(Jugador jugador, double dificultad, int nivel) {
+        this(jugador.getBonusZonaCritica(), jugador.getFactorVelocidadBarra(), dificultad, nivel);
+    }
+
+    // Constructor con números sueltos (útil para las pruebas)
+    public MinijuegoAnillo(int bonusCritico, double factorVelocidad, double dificultad, int nivel) {
+        if (!(dificultad > 0 && dificultad <= 1.5)) {
+            throw new IllegalArgumentException("dificultad fuera de rango: " + dificultad);
+        }
+        if (!(factorVelocidad > 0)) {
+            throw new IllegalArgumentException("el factor de velocidad debe ser positivo: " + factorVelocidad);
+        }
+        double zona = Dificultad.factorZona(nivel);
+        this.duracion = DURACION_BASE / (factorVelocidad * (2.0 - dificultad) * Dificultad.factorVelocidad(nivel));
+        this.toleranciaCritica = (5 + bonusCritico / 4.0) * dificultad * zona;
+        this.toleranciaNormal = 24 * (0.5 + 0.5 * dificultad) * (1.0 + zona) / 2.0;
+    }
+
+    @Override
+    public void actualizar(double dt) {
+        if (estaTerminado()) {
+            return;
+        }
+        tiempo = tiempo + dt;
+        // Si el anillo ya pasó de largo la marca, se perdió la oportunidad
+        if (getRadio() < RADIO_OBJETIVO - toleranciaNormal) {
+            terminar(Calidad.FALLO);
+        }
+    }
+
+    @Override
+    public void pulsar() {
+        if (estaTerminado()) {
+            return;
+        }
+        terminar(calidadConRadio(getRadio()));
+    }
+
+    // Calidad que daría un golpe cuando el anillo mide ese radio
+    public int calidadConRadio(double radio) {
+        double error = Math.abs(radio - RADIO_OBJETIVO);
+        if (error <= toleranciaCritica) {
+            return Calidad.CRITICO;
+        }
+        if (error <= toleranciaNormal) {
+            return Calidad.NORMAL;
+        }
+        return Calidad.FALLO;
+    }
+
+    // Radio actual del anillo: baja en línea recta desde RADIO_INICIAL hasta 0
+    public double getRadio() {
+        return Math.max(0, RADIO_INICIAL * (1.0 - tiempo / duracion));
+    }
+
+    @Override
+    public int getTipo() {
+        return TIPO_ANILLO;
+    }
+
+    @Override
+    public String getInstruccion() {
+        return "¡ESPACIO cuando el anillo toque la marca!";
+    }
+
+    public double getDuracion() {
+        return duracion;
+    }
+
+    public double getToleranciaCritica() {
+        return toleranciaCritica;
+    }
+
+    public double getToleranciaNormal() {
+        return toleranciaNormal;
+    }
+}
+```
+
+- `getRadio()` baja **en línea recta** desde `RADIO_INICIAL` hasta 0 en `duracion` segundos (una regla de tres: `130 × (1 − tiempo / duracion)`).
+- Al apretar, se mide el **error** (`Math.abs(radio - RADIO_OBJETIVO)`) y se compara con las tolerancias crítica y normal: es la misma idea que la barra, pero la distancia es entre dos radios.
+- `actualizar` detecta que el anillo **ya pasó de largo** la marca y termina el minijuego como fallo (no hay que esperar a que el jugador apriete).
+- Las tolerancias y la duración dependen de la Destreza, de la dificultad y del nivel.
 
 ### 6.2 `TipoNodo`, `NodoMapa`
 
@@ -1853,15 +2711,17 @@ Convierte "el lugar `i` de `n`" en "el lugar equivalente de `m`": calcula su ubi
 
 **Para qué sirve:** toda la lógica de una pelea por turnos. Es una **máquina de estados**: en cada momento el combate está en un estado y solo ciertas acciones son válidas.
 
+En su turno el héroe puede hacer cuatro cosas (como en los juegos de Pokémon): **Luchar** (arma o puños, cuestan *energía*), **Magia** (hechizos, cuestan *maná*), **Defender** (recupera energía y reduce el daño a la mitad esta ronda) o **Huir** (probabilidad según la Destreza; no sirve contra el jefe).
+
 ```
-          elegirHabilidad (usa barra)           detenerBarra
-ELECCION ------------------------> APUNTANDO ------------------> RESULTADO
-    ^   \ (sin barra: cura)                                          |   |
-    |    \----------------------------------------------------------/   | continuar
-    |                                                                   v
-    |        continuar            ejecutarTurnoEnemigo         ¿enemigo muerto? --> VICTORIA
-    +---- (nueva ronda) <---- TURNO_ENEMIGO <------ continuar    ¿jugador muerto? --> DERROTA
-                                                                 escape --> HUIDA
+        elegirArma / elegirPunos / elegirHabilidad (ofensiva)            pulsar (o se acaba el tiempo)
+ELECCION ---------------------------------------------> APUNTANDO ------------------------> RESULTADO
+    ^   \ curación, defender, huir fallida (sin minijuego)                                   |   |
+    |    \---------------------------------------------------------------------------------/   | continuar
+    |                                                                                          v
+    |       continuar             ejecutarTurnoEnemigo            ¿enemigo muerto? --> VICTORIA
+    +---- (nueva ronda) <---- TURNO_ENEMIGO <------ continuar     ¿jugador muerto? --> DERROTA
+                                                                  huir con éxito / escape --> HUIDA
 ```
 
 ```java
@@ -1877,42 +2737,62 @@ public static final int HUIDA = 6;
 public static final int JUGADOR = 1;
 public static final int ENEMIGO = 2;
 
+// Reglas de energía y huida
+public static final int ENERGIA_DEFENSA = 4;
+private static final int HUIDA_BASE = 40;
+private static final int HUIDA_POR_DESTREZA = 5;
+private static final int HUIDA_MAXIMA = 90;
+
 // Atributos
 private final Jugador jugador;
 private final Enemigo enemigo;
 private final boolean esJefe;
+private final int nivel;
+private final Random azar;
 private final ColaEnlazada<Integer> turnos = new ColaEnlazada<>();
 private int estado;
+private Minijuego minijuego;
 private BarraPrecision barra;
+private MinijuegoRafaga rafaga;
+private MinijuegoAnillo anillo;
 private Habilidad habilidadActual;
 private String mensaje = "";
 private int rondas;
 ```
 
-- Los estados son constantes enteras: `ELECCION` (el jugador elige habilidad), `APUNTANDO` (se mueve la barra), `RESULTADO` (se muestra lo que pasó), `TURNO_ENEMIGO`, y los tres finales `VICTORIA`, `DERROTA`, `HUIDA`.
+- Los estados son constantes enteras: `ELECCION` (el jugador elige qué hacer), `APUNTANDO` (se juega el minijuego), `RESULTADO` (se muestra lo que pasó), `TURNO_ENEMIGO`, y los tres finales `VICTORIA`, `DERROTA`, `HUIDA`.
 - `JUGADOR` y `ENEMIGO` son los valores que viajan por la **cola de turnos**.
 - **`turnos` es una `ColaEnlazada<Integer>`**: la cola FIFO que exige la consigna.
-- `barra` y `habilidadActual` son los datos de la acción en curso.
+- `nivel` es la dificultad (enemigos derrotados). `azar` es el generador que elige el minijuego y decide si la huida funciona: **se recibe de afuera** para poder fijarlo en las pruebas.
+- `minijuego` guarda el minijuego en curso (`barra`, `rafaga` y `anillo` son la misma referencia con su tipo concreto, para que la pantalla pueda dibujar cada uno). `habilidadActual` es la acción en curso.
 
 ```java
-public Combate(Jugador jugador, Enemigo enemigo, boolean esJefe) {
-    if (jugador == null || enemigo == null) {
-        throw new IllegalArgumentException("el combate necesita jugador y enemigo");
+public Combate(Jugador jugador, Enemigo enemigo, boolean esJefe, int nivel, Random azar) {
+    if (jugador == null || enemigo == null || azar == null) {
+        throw new IllegalArgumentException("el combate necesita jugador, enemigo y azar");
     }
     this.jugador = jugador;
     this.enemigo = enemigo;
     this.esJefe = esJefe;
+    this.nivel = Dificultad.limitarNivel(nivel);
+    this.azar = azar;
     this.mensaje = "¡" + enemigo.getNombre() + " aparece!";
+    jugador.prepararCombate();
     prepararSiguienteTurno();
 }
 ```
 
-El constructor valida que haya jugador y enemigo, guarda todo, escribe el mensaje inicial y llama a `prepararSiguienteTurno()` para armar la primera ronda.
+Hay un constructor corto (nivel 0 y azar propio) y este, el completo. Valida que haya jugador, enemigo y azar, guarda todo, escribe el mensaje inicial y llama a `jugador.prepararCombate()` (**energía llena, sin guardia ni veneno viejo**) y a `prepararSiguienteTurno()` para armar la primera ronda.
 
 ```java
 private void prepararSiguienteTurno() {
     if (turnos.estaVacia()) {
         rondas++;
+        if (rondas > 1) {
+            // Empieza una ronda nueva: se acaba la guardia y se recupera un poco de energía
+            jugador.setGuardia(false);
+            jugador.recuperarEnergia(Jugador.ENERGIA_POR_RONDA);
+        }
         turnos.encolar(JUGADOR);
         for (int i = 0; i < enemigo.getTurnosPorRonda(); i++) {
             turnos.encolar(ENEMIGO);
@@ -1928,24 +2808,33 @@ private void prepararSiguienteTurno() {
 
 **Esto es el uso de la cola:**
 
-1. Si la cola está vacía, se arma una ronda nueva: se encola `JUGADOR` y después `ENEMIGO` tantas veces como actúe el enemigo por ronda (1 normalmente; **2 para el Lobo**).
+1. Si la cola está vacía, se arma una ronda nueva: se encola `JUGADOR` y después `ENEMIGO` tantas veces como actúe el enemigo por ronda (1 normalmente; **2 para el Lobo**). En cada ronda **nueva** (no en la primera) se **apaga la guardia** y se **recuperan 3 de energía**.
 2. Se mira el **frente** de la cola (`turnos.frente()`) **sin sacarlo**. Si es el jugador, el estado pasa a `ELECCION`; si es el enemigo, a `TURNO_ENEMIGO`.
 
-El turno se **saca** de la cola recién cuando el que actúa **termina** de actuar (`turnos.desencolar()` en `resolver` y en `ejecutarTurnoEnemigo`). Por eso el frente siempre es "quién tiene que actuar ahora".
+El turno se **saca** de la cola recién cuando el que actúa **termina** de actuar (`turnos.desencolar()`). Por eso el frente siempre es "quién tiene que actuar ahora".
 
 Ejemplo con el Lobo: la cola es `[J, E, E]`. Actúa el jugador → `[E, E]`. Actúa el lobo → `[E]`. Actúa otra vez → `[]` (vacía) → se arma una ronda nueva `[J, E, E]`.
 
 ```java
 public boolean elegirHabilidad(int indice) {
-    if (estado != ELECCION) {
-        return false;
-    }
     if (indice < 0 || indice >= jugador.cantidadHabilidades()) {
         return false;
     }
-    Habilidad habilidad = jugador.getHabilidad(indice);
+    return iniciarAccion(jugador.getHabilidad(indice));
+}
+```
+
+```java
+private boolean iniciarAccion(Habilidad habilidad) {
+    if (estado != ELECCION) {
+        return false;
+    }
     if (!jugador.puedePagar(habilidad.getCostoMana())) {
         mensaje = "No tienes maná suficiente para " + habilidad.getNombre() + ".";
+        return false;
+    }
+    if (!jugador.puedePagarEnergia(habilidad.getCostoEnergia())) {
+        mensaje = "No tienes energía suficiente para " + habilidad.getNombre() + ".";
         return false;
     }
     if (habilidad.esEscape() && esJefe) {
@@ -1953,11 +2842,12 @@ public boolean elegirHabilidad(int indice) {
         return false;
     }
     jugador.gastarMana(habilidad.getCostoMana());
+    jugador.gastarEnergia(habilidad.getCostoEnergia());
     habilidadActual = habilidad;
     if (habilidad.usaBarra()) {
-        barra = new BarraPrecision(jugador, habilidad.getDificultadBarra());
+        crearMinijuego(habilidad.getDificultadBarra());
         estado = APUNTANDO;
-        mensaje = "¡Frena la barra con ESPACIO!";
+        mensaje = minijuego.getInstruccion();
     } else {
         resolver(Calidad.NORMAL);
     }
@@ -1965,49 +2855,127 @@ public boolean elegirHabilidad(int indice) {
 }
 ```
 
-Es lo que pasa cuando el jugador elige una habilidad. Devuelve `true` si la acción se inició.
+Las tres acciones ofensivas (`elegirHabilidad`, `elegirArma`, `elegirPunos`) terminan en **`iniciarAccion`**, que es el único lugar con las reglas. Devuelve `true` si la acción se inició:
 
 1. Solo vale si el estado es `ELECCION` (no se puede elegir mientras se apunta, por ejemplo).
-2. Valida el índice (que exista esa habilidad en el repertorio).
-3. Si no alcanza el maná, avisa en el mensaje y **no cambia nada**.
-4. Si es un escape y el combate es contra un jefe, avisa y **no gasta maná**.
-5. Si todo está bien: **gasta el maná**, recuerda la habilidad (`habilidadActual`) y:
-   - Si usa barra → crea la `BarraPrecision` (con la Destreza y la dificultad de la habilidad) y pasa a `APUNTANDO`.
+2. Si no alcanza el **maná**, o la **energía**, avisa en el mensaje y **no cambia nada**.
+3. Si es un escape y el combate es contra un jefe, avisa y **no gasta nada**.
+4. Si todo está bien: **gasta el maná y la energía**, recuerda la habilidad (`habilidadActual`) y:
+   - Si usa minijuego → lo crea con `crearMinijuego` y pasa a `APUNTANDO`.
    - Si no (curación, escape) → se resuelve de inmediato con calidad `NORMAL`.
+
+`elegirHabilidad(indice)` además valida que el hechizo exista en el repertorio. Por **polimorfismo**, `iniciarAccion` trata igual a un arma, a unos puños o a un hechizo: solo ve una `Habilidad`.
+
+```java
+private void crearMinijuego(double dificultad) {
+    barra = null;
+    rafaga = null;
+    anillo = null;
+    int tirada = azar.nextInt(100);
+    if (tirada < 50) {
+        barra = new BarraPrecision(jugador, dificultad, nivel);
+        minijuego = barra;
+    } else if (tirada < 75) {
+        rafaga = new MinijuegoRafaga(jugador, dificultad, nivel);
+        minijuego = rafaga;
+    } else {
+        anillo = new MinijuegoAnillo(jugador, dificultad, nivel);
+        minijuego = anillo;
+    }
+}
+```
+
+**El minijuego sale al azar:** `azar.nextInt(100)` da un número de 0 a 99. Menos de 50 → barra (50 %), de 50 a 74 → ráfaga (25 %), el resto → anillo (25 %). A los tres se les pasa la **dificultad de la habilidad** y el **nivel**: ahí es donde la dificultad crece con el avance.
+
+```java
+public boolean defender() {
+    if (estado != ELECCION) {
+        return false;
+    }
+    jugador.setGuardia(true);
+    jugador.recuperarEnergia(ENERGIA_DEFENSA);
+    mensaje = "Te cubres con tu guardia: recibirás la mitad de daño esta ronda. (+" + ENERGIA_DEFENSA + " energía)";
+    habilidadActual = null;
+    terminarTurnoDelJugador();
+    return true;
+}
+```
+
+```java
+public boolean huir() {
+    if (estado != ELECCION) {
+        return false;
+    }
+    if (esJefe) {
+        mensaje = "¡No puedes huir de un jefe!";
+        return false;
+    }
+    if (azar.nextInt(100) < getProbabilidadDeHuir()) {
+        mensaje = "Logras escabullirte entre los árboles.";
+        turnos.desencolar();
+        estado = HUIDA;
+    } else {
+        mensaje = enemigo.getNombre() + " te corta el paso: no logras huir.";
+        habilidadActual = null;
+        terminarTurnoDelJugador();
+    }
+    return true;
+}
+```
+
+- `defender()`: activa la **guardia** (`setGuardia(true)`), recupera 4 de energía y termina el turno **sin gastar nada**. Es la jugada para "recargar" cuando la energía está baja. La guardia dura hasta que empieza la ronda siguiente.
+- `huir()`: contra un jefe no se puede (y no se pierde el turno). Si no es jefe, se tira `azar.nextInt(100)` y se compara con la probabilidad (`40 + 5 × Destreza`, con tope 90 %). Si sale, el combate termina en `HUIDA`; si no, **se pierde el turno**.
 
 ```java
 public void actualizar(double dt) {
     if (estado == APUNTANDO) {
-        barra.actualizar(dt);
+        minijuego.actualizar(dt);
+        if (minijuego.estaTerminado()) {
+            resolver(minijuego.getResultado());
+        }
     }
 }
 ```
 
 ```java
-public void detenerBarra() {
+public void pulsar() {
     if (estado != APUNTANDO) {
         return;
     }
-    int calidad = barra.detener();
-    resolver(calidad);
+    minijuego.pulsar();
+    if (minijuego.estaTerminado()) {
+        resolver(minijuego.getResultado());
+    }
 }
 ```
 
 ```java
 private void resolver(int calidad) {
     mensaje = habilidadActual.aplicar(jugador, enemigo, calidad);
-    turnos.desencolar();
     if (habilidadActual.esEscape()) {
+        turnos.desencolar();
         estado = HUIDA;
     } else {
-        estado = RESULTADO;
+        terminarTurnoDelJugador();
     }
 }
 ```
 
-- `actualizar(dt)`: solo mueve la barra mientras se está apuntando.
-- `detenerBarra()`: si se está apuntando, detiene la barra y obtiene la calidad.
-- `resolver(calidad)`: **aplica la habilidad** (`habilidadActual.aplicar(...)`, que es polimórfico), guarda el texto que devuelve como mensaje, **saca al jugador de la cola** (`turnos.desencolar()`) y decide el estado: `HUIDA` si la habilidad es un escape; `RESULTADO` en los demás casos.
+```java
+private void terminarTurnoDelJugador() {
+    turnos.desencolar();
+    if (jugador.estaEnvenenado() && !enemigo.estaMuerto()) {
+        int danio = jugador.aplicarVeneno();
+        mensaje = mensaje + " El veneno te quita " + danio + " de vida.";
+    }
+    estado = RESULTADO;
+}
+```
+
+- `actualizar(dt)`: mueve el minijuego mientras se apunta, y si **terminó solo** (se acabó el tiempo de la ráfaga o el anillo pasó de largo) lo resuelve.
+- `pulsar()`: reenvía el ESPACIO al minijuego (`minijuego.pulsar()`, **polimórfico**) y, si terminó, lo resuelve. Reemplaza al viejo `detenerBarra()`: ya no hay que saber de qué minijuego se trata.
+- `resolver(calidad)`: **aplica la habilidad** (`habilidadActual.aplicar(...)`), guarda el texto que devuelve como mensaje y decide el estado: `HUIDA` si es un escape; si no, `terminarTurnoDelJugador()`.
+- `terminarTurnoDelJugador()`: **saca al jugador de la cola**, le **cobra el veneno** (si lo tiene y el enemigo sigue vivo) y pasa a `RESULTADO`.
 
 ```java
 public void continuar() {
@@ -2035,6 +3003,10 @@ public void ejecutarTurnoEnemigo() {
     }
     mensaje = enemigo.atacar(jugador);
     turnos.desencolar();
+    if (enemigo.estaEnvenenado() && !jugador.estaMuerto()) {
+        int danio = enemigo.aplicarVeneno();
+        mensaje = mensaje + " El veneno le quita " + danio + " de vida.";
+    }
     estado = RESULTADO;
 }
 ```
@@ -2042,7 +3014,7 @@ public void ejecutarTurnoEnemigo() {
 - `continuar()` se llama cuando el jugador lee el mensaje y avanza. Según el estado:
   - En `RESULTADO`: si el **enemigo murió** → `VICTORIA` (y se suma el oro de recompensa); si el **jugador murió** → `DERROTA`; si nadie murió → `prepararSiguienteTurno()` (mira quién sigue en la cola).
   - En `TURNO_ENEMIGO`: ejecuta el turno del enemigo.
-- `ejecutarTurnoEnemigo()`: llama a `enemigo.atacar(jugador)` (polimórfico: cada enemigo ataca a su modo), **saca al enemigo de la cola** y pasa a `RESULTADO` para mostrar lo ocurrido.
+- `ejecutarTurnoEnemigo()`: llama a `enemigo.atacar(jugador)` (polimórfico: cada enemigo ataca a su modo), **saca al enemigo de la cola**, le cobra el **veneno** si lo tiene y pasa a `RESULTADO` para mostrar lo ocurrido.
 
 Un detalle importante: la victoria se evalúa en `continuar`, **después** de que el jugador lee el mensaje del golpe final. Así siempre se ve el último golpe antes de ganar.
 
@@ -2099,7 +3071,7 @@ public EfectoEvento(Tipo tipo, int valor, String texto) {
 }
 ```
 
-- El `enum Tipo` anidado lista los ocho efectos posibles.
+- El `enum Tipo` anidado lista los efectos posibles (los atributos, vida, maná, oro, `HABILIDAD` y `COMBATE`).
 - `valor` es el número (para los numéricos) y `texto` es el dato de los que no lo son (el código de la habilidad, o el nombre del enemigo de la emboscada).
 - El constructor valida: un efecto `HABILIDAD` necesita un código válido del catálogo; un `COMBATE` necesita un nombre de enemigo.
 
@@ -2160,7 +3132,7 @@ private String aplicarHabilidad(Jugador jugador) {
 
 - `aplicar(jugador)` ejecuta el efecto y **devuelve una descripción corta** (`"+5 vida"`, `"-15 oro"`, `"aprendes Luz sanadora"`) que luego se junta con las demás para mostrar el resumen. `COMBATE` no cambia nada al aplicarse (devuelve `null`): la emboscada la dispara la pantalla.
 - Los atributos solo se suben si el valor es positivo (en la práctica nunca bajan).
-- Para una habilidad: si ya la conoce, avisa; si no hay lugar, avisa; si no, la aprende.
+- Para un hechizo: si ya lo conoce, avisa; si no hay lugar (máximo 4), avisa; si no, lo aprende.
 
 **`OpcionEvento`:** el texto del botón, el relato del resultado y la lista de efectos.
 
@@ -2275,18 +3247,36 @@ public Partida(long semilla, Jugador jugador, PilaEnlazada<Integer> ruta, PilaEn
 ```
 
 ```java
-public static Partida nueva(long semilla, ListaEnlazada<EventoNarrativo> eventos) {
+public static Partida nueva(long semilla, ListaEnlazada<EventoNarrativo> eventos, Clase clase) {
     MapaBosque mapaTemporal = new MapaBosque(semilla);
     PilaEnlazada<Integer> ruta = new PilaEnlazada<>();
     ruta.apilar(mapaTemporal.getIdInicio());
     PilaEnlazada<Registro> diario = new PilaEnlazada<>();
-    diario.apilar(new Registro(mapaTemporal.getIdInicio(), "Entras al Sendero Oscuro."));
-    return new Partida(semilla, new Jugador(), ruta, diario, 0, eventos);
+    diario.apilar(new Registro(mapaTemporal.getIdInicio(), "Entras al Sendero Oscuro como " + clase.getNombre() + "."));
+    return new Partida(semilla, new Jugador(clase), ruta, diario, 0, eventos);
+}
+```
+
+```java
+public ListaEnlazada<Integer> getAdyacentesOrdenados() {
+    ListaEnlazada<Integer> original = getAdyacentes();
+    ListaEnlazada<Integer> ordenados = new ListaEnlazada<>();
+    for (int i = 0; i < original.tamanio(); i++) {
+        int id = original.obtener(i);
+        int y = mapa.getNodo(id).getY();
+        int posicion = 0;
+        while (posicion < ordenados.tamanio() && mapa.getNodo(ordenados.obtener(posicion)).getY() <= y) {
+            posicion++;
+        }
+        ordenados.insertar(posicion, id);
+    }
+    return ordenados;
 }
 ```
 
 - El constructor valida que nada sea `null`, que la ruta no esté vacía (siempre hay un lugar actual) y que `derrotados` no sea negativo. Después **genera el mapa con la semilla** (`new MapaBosque(semilla)`) y marca los nodos visitados.
-- `nueva(semilla, eventos)` arma una partida desde cero: la ruta con solo el nodo de inicio, el diario con "Entras al Sendero Oscuro." y un `Jugador` nuevo. (Crea un mapa provisorio solo para saber el id del inicio; es barato.)
+- `nueva(semilla, eventos, clase)` arma una partida desde cero: la ruta con solo el nodo de inicio, el diario con "Entras al Sendero Oscuro como Caballero." (o la clase elegida) y un `Jugador` nuevo **de esa clase**. (Crea un mapa provisorio solo para saber el id del inicio; es barato.)
+- `getAdyacentesOrdenados()` devuelve los mismos destinos pero **ordenados de arriba hacia abajo** según su posición `y` en pantalla. Es un **ordenamiento por inserción** con la lista enlazada: para cada vecino se busca la primera posición cuyo nodo esté más abajo y se lo `insertar` ahí. **Por qué hace falta:** el grafo guarda los vecinos en el orden en que se crearon las aristas, que no tiene nada que ver con cómo se ven en pantalla; sin ordenar, la flecha "arriba" del teclado podía mover el selector hacia abajo. La pantalla del mapa usa esta versión.
 
 ```java
 private void marcarVisitados() {
@@ -2318,6 +3308,24 @@ public int getNodoActual() {
 ```java
 public ListaEnlazada<Integer> getAdyacentes() {
     return mapa.getGrafo().idsAdyacentes(getNodoActual());
+}
+
+// Los mismos destinos, ordenados de arriba hacia abajo según su posición en pantalla.
+// Así la flecha "arriba" del teclado elige el lugar de más arriba y "abajo" el de más abajo.
+// Es un ordenamiento por inserción: cada id se coloca antes del primero que está más abajo.
+public ListaEnlazada<Integer> getAdyacentesOrdenados() {
+    ListaEnlazada<Integer> original = getAdyacentes();
+    ListaEnlazada<Integer> ordenados = new ListaEnlazada<>();
+    for (int i = 0; i < original.tamanio(); i++) {
+        int id = original.obtener(i);
+        int y = mapa.getNodo(id).getY();
+        int posicion = 0;
+        while (posicion < ordenados.tamanio() && mapa.getNodo(ordenados.obtener(posicion)).getY() <= y) {
+            posicion++;
+        }
+        ordenados.insertar(posicion, id);
+    }
+    return ordenados;
 }
 
 public boolean puedeMoverA(int id) {
@@ -2433,7 +3441,7 @@ public EventoNarrativo crearEventoCofre() {
 }
 ```
 
-El **cofre** no sale del archivo de eventos: se arma en el código, porque su primera opción **depende del estado del héroe**: enseña la próxima habilidad del catálogo que le falta (`proximaHabilidadPorAprender`), o, si ya las sabe todas, da +1 de Inteligencia. Las otras dos opciones son fijas (20 de oro; una poción que da vida y maná). Ver cómo se arma la lista de opciones con `agregar`: **todo evento es una lista enlazada de opciones, cada una con una lista enlazada de efectos**.
+El **cofre** no sale del archivo de eventos: se arma en el código, porque su primera opción **depende del estado del héroe**: enseña el próximo hechizo del catálogo que le falta (`proximaHabilidadPorAprender`), o, si el repertorio ya está lleno (4) o los sabe todos, da +1 de Inteligencia. Las otras dos opciones son fijas (20 de oro; una poción que da vida y maná). Ver cómo se arma la lista de opciones con `agregar`: **todo evento es una lista enlazada de opciones, cada una con una lista enlazada de efectos**.
 
 ```java
 public String sumarDerrotado() {
@@ -2459,16 +3467,17 @@ public String sumarDerrotado() {
 
 ## 7. Paquete `juego.archivos`: `GestorArchivos`
 
-**Para qué sirve:** toda la **persistencia**: guardar y cargar la partida (`guardado.txt`) y leer los eventos (`eventos.txt`). Usa las clases de `java.io` que pide la cátedra: `PrintWriter` para escribir y `BufferedReader` para leer.
+**Para qué sirve:** toda la **persistencia**: guardar y cargar la partida (`guardado.txt`), guardar y cargar las opciones (`opciones.txt`) y leer los eventos (`eventos.txt`). Usa las clases de `java.io` que pide la cátedra: `PrintWriter` para escribir y `BufferedReader` para leer.
 
 **Principio de diseño:** que falte o esté dañado un archivo **no debe romper el juego**. Es una situación esperable, no un error del programa. Por eso `cargar` devuelve `null` en lugar de lanzar excepciones hacia afuera.
 
 ### 7.1 Atributos y rutas
 
 ```java
-private static final String VERSION = "1";
+private static final String VERSION = "2";
 private static final String NOMBRE_GUARDADO = "guardado.txt";
 private static final String NOMBRE_EVENTOS = "eventos.txt";
+private static final String NOMBRE_OPCIONES = "opciones.txt";
 
 // Atributos
 private final String carpeta;
@@ -2491,7 +3500,7 @@ public String rutaEventos() {
 }
 ```
 
-- `VERSION = "1"` se escribe en la primera línea del guardado. Si en el futuro el formato cambia, se sube el número y los guardados viejos se detectan.
+- `VERSION = "2"` se escribe en la primera línea del guardado. Cuando se agregaron las clases el formato cambió (apareció la línea `CLASE=`), se subió el número de 1 a 2 y **los guardados viejos se detectan y se rechazan** sin romper nada.
 - `carpeta` es la carpeta donde viven los archivos (`datos`). El constructor rechaza una carpeta vacía.
 - `File.separator` es la barra del sistema operativo (`/` en Linux, `\` en Windows). Así las rutas funcionan en ambos.
 
@@ -2520,6 +3529,7 @@ public boolean guardar(Partida partida) {
         Jugador j = partida.getJugador();
         salida.println("VERSION=" + VERSION);
         salida.println("SEMILLA=" + partida.getSemilla());
+        salida.println("CLASE=" + j.getClase().name());
         salida.println("FUERZA=" + j.getFuerza());
         salida.println("DESTREZA=" + j.getDestreza());
         salida.println("INTELIGENCIA=" + j.getInteligencia());
@@ -2552,16 +3562,17 @@ Paso a paso:
 6. `return !salida.checkError()`: `PrintWriter` **no lanza** excepciones al escribir; guarda un indicador de error que se consulta con `checkError()`. Si hubo error devolvemos `false`.
 7. `catch (IOException e)`: si ni siquiera se pudo abrir el archivo, también `false`.
 
-**No se guarda el grafo**: se guarda la **semilla** y el mapa se regenera igual.
+**No se guarda el grafo**: se guarda la **semilla** y el mapa se regenera igual. Tampoco se guardan la **energía**, la **guardia** ni el **veneno**: son estados de un combate y no hay guardado en medio de uno (se llenan/limpian en `prepararCombate`).
 
 Ejemplo del archivo que produce:
 
 ```
-VERSION=1
+VERSION=2
 SEMILLA=2024
-FUERZA=5
+CLASE=LADRON
+FUERZA=2
 ...
-HABILIDADES=ATAQUE,CURACION
+HABILIDADES=VENENO,CURACION
 RUTA=0,2,6
 REGISTRO=0|Entras al Sendero Oscuro.
 ```
@@ -2579,6 +3590,10 @@ public Partida cargar(ListaEnlazada<EventoNarrativo> eventos) {
             return null;
         }
         long semilla = Long.parseLong(valorDe(lineas, "SEMILLA"));
+        Clase clase = Clase.porCodigo(valorDe(lineas, "CLASE"));
+        if (clase == null) {
+            return null;
+        }
         int fuerza = Integer.parseInt(valorDe(lineas, "FUERZA"));
         int destreza = Integer.parseInt(valorDe(lineas, "DESTREZA"));
         int inteligencia = Integer.parseInt(valorDe(lineas, "INTELIGENCIA"));
@@ -2591,7 +3606,7 @@ public Partida cargar(ListaEnlazada<EventoNarrativo> eventos) {
             return null;
         }
 
-        Jugador jugador = new Jugador(fuerza, destreza, inteligencia, vida, mana, oro);
+        Jugador jugador = new Jugador(clase, fuerza, destreza, inteligencia, vida, mana, oro);
         if (!cargarHabilidades(jugador, valorDe(lineas, "HABILIDADES"))) {
             return null;
         }
@@ -2611,7 +3626,7 @@ public Partida cargar(ListaEnlazada<EventoNarrativo> eventos) {
 
 1. `leerLineas` devuelve **todas las líneas** en una `ListaEnlazada<String>` o `null` si no se pudo leer. Si es `null`, `cargar` devuelve `null`.
 2. Dentro del `try`, para cada dato se pide su valor con `valorDe(lineas, "CLAVE")` y se lo convierte con `Integer.parseInt` o `Long.parseLong`. **Si el texto no es un número** (por ejemplo `FUERZA=abc`) esas funciones lanzan `NumberFormatException`.
-3. Se reconstruye el `Jugador` con el constructor de carga, se le cargan las habilidades, se reconstruye la ruta (como pila) y el diario (como pila) y se crea la `Partida`.
+3. Se reconstruye el `Jugador` con el constructor de carga (le pasa la **clase** leída con `Clase.porCodigo`; si el texto no es una clase válida, devuelve `null`), se le cargan los hechizos, se reconstruye la ruta (como pila) y el diario (como pila) y se crea la `Partida`.
 4. **`catch (RuntimeException e) { return null; }`**: cualquier error inesperado al interpretar los datos significa que el archivo está dañado. `NumberFormatException` (número mal escrito), `IllegalArgumentException` (valores imposibles, como Fuerza 0, que lanza el constructor de `Jugador`) y `NullPointerException` (falta una clave: `valorDe` devuelve `null`) son todas `RuntimeException`.
 5. Validaciones extra: `vida <= 0` (una partida guardada de un muerto), la versión, que la ruta termine en el nodo actual.
 
@@ -2640,13 +3655,13 @@ private boolean cargarHabilidades(Jugador jugador, String texto) {
             return false;
         }
     }
-    // Todo héroe sabe atacar: un guardado sin ATAQUE fue modificado a mano
-    return jugador.conoceHabilidad("ATAQUE");
+    // Todo héroe empieza con un hechizo y nunca los pierde: un guardado sin ninguno fue modificado a mano
+    return jugador.cantidadHabilidades() >= 1;
 }
 ```
 
 - `valorDe(lineas, clave)`: busca la primera línea que empiece con `"CLAVE="` y devuelve lo que sigue (`substring` desde después del `=`), sin espacios sobrantes (`trim`). Si no la encuentra, devuelve `null`.
-- `cargarHabilidades`: usa el `Tokenizador` para partir `"ATAQUE,CURACION"` por comas. Rechaza códigos inventados (`esValido`) y repertorios que no incluyan `ATAQUE` (**todo héroe sabe atacar**: si falta, el archivo fue modificado a mano).
+- `cargarHabilidades`: usa el `Tokenizador` para partir `"VENENO,CURACION"` por comas. Rechaza códigos inventados (`esValido`), repertorios de **más de 4 hechizos** (`aprenderHabilidad` devuelve `false`) y repertorios **vacíos** (todo héroe empieza con un hechizo y nunca los pierde: si falta, el archivo fue modificado a mano).
 
 ```java
 private PilaEnlazada<Integer> leerRuta(String texto, long semilla) {
@@ -2701,7 +3716,52 @@ private PilaEnlazada<Registro> leerDiario(ListaEnlazada<String> lineas) {
 
 Para cada línea `REGISTRO=id|texto`: se busca la **primera** barra `|` con `indexOf` (así el texto puede contener más barras sin problema), se separa el id y el texto, y se **apila** el registro. Como el archivo viene del más antiguo al más nuevo, el último queda arriba.
 
-### 7.4 Leer los eventos (`eventos.txt`)
+### 7.4 Guardar y cargar las opciones (`opciones.txt`)
+
+```java
+public boolean guardarOpciones(Opciones opciones) {
+    new File(carpeta).mkdirs();
+    try (PrintWriter salida = new PrintWriter(new OutputStreamWriter(new FileOutputStream(rutaOpciones()), "UTF-8"))) {
+        salida.println("RESOLUCION=" + opciones.getResolucion());
+        salida.println("BRILLO=" + opciones.getBrillo());
+        salida.println("TEXTO=" + opciones.getTexto());
+        return !salida.checkError();
+    } catch (IOException e) {
+        return false;
+    }
+}
+```
+
+```java
+public Opciones cargarOpciones() {
+    Opciones opciones = new Opciones();
+    ListaEnlazada<String> lineas = leerLineas(rutaOpciones());
+    if (lineas == null) {
+        return opciones;
+    }
+    try {
+        opciones.setResolucion(Integer.parseInt(valorDe(lineas, "RESOLUCION")));
+    } catch (RuntimeException e) {
+        // valor ausente, no numérico o fuera de rango: se queda el de por defecto
+    }
+    try {
+        opciones.setBrillo(Integer.parseInt(valorDe(lineas, "BRILLO")));
+    } catch (RuntimeException e) {
+        // ídem
+    }
+    try {
+        opciones.setTexto(Integer.parseInt(valorDe(lineas, "TEXTO")));
+    } catch (RuntimeException e) {
+        // ídem
+    }
+    return opciones;
+}
+```
+
+- `guardarOpciones` escribe tres líneas (`RESOLUCION=`, `BRILLO=`, `TEXTO=`) con el mismo esquema que el guardado de la partida.
+- `cargarOpciones` es **tolerante campo por campo**: parte de un `Opciones` con los valores por defecto y trata de leer cada línea **dentro de su propio `try/catch`**. Si una línea falta, no es un número o tiene un valor fuera de rango (los `set...` de `Opciones` lanzan `IllegalArgumentException`), **solo esa opción** se queda en su valor por defecto y las demás se conservan. Un archivo de opciones roto nunca rompe el juego.
+
+### 7.5 Leer los eventos (`eventos.txt`)
 
 ```java
 public ListaEnlazada<EventoNarrativo> cargarEventos() {
@@ -2805,7 +3865,7 @@ public ListaEnlazada<EfectoEvento> interpretarEfectos(String texto) {
 
 **Ventaja de tener los eventos en un archivo:** agregar o cambiar un evento **no requiere recompilar**. Es la diferencia entre *datos* y *código*.
 
-### 7.5 Leer un archivo de texto
+### 7.6 Leer un archivo de texto
 
 ```java
 public ListaEnlazada<String> leerLineas(String ruta) {
@@ -2909,7 +3969,7 @@ public BufferedImage crearImagen(int escala) {
 
 ### 8.3 `CatalogoSprites`
 
-Contiene los **15 dibujos** del juego (héroe, 4 enemigos, 5 íconos del mapa, altar, árbol, antorcha, corazón y poción). Cada uno es una constante `String`. Por ejemplo, el cofre:
+Contiene los **22 dibujos** del juego (los 4 héroes —caballero, mago, druida y ladrón—, 7 enemigos más el Rey Oscuro, 5 íconos del mapa, altar, árbol, antorcha, corazón y poción). Cada uno es una constante `String`. Por ejemplo, el cofre:
 
 ```java
 private static final String DIBUJO_COFRE =
@@ -2935,7 +3995,7 @@ Cada letra es un color de la paleta (`K` negro, `B` marrón, `b` marrón claro, 
 
 Además tiene:
 
-- Constantes con el nombre de cada sprite (`CatalogoSprites.JUGADOR = "jugador"`), para no escribir textos sueltos en el resto del código.
+- Constantes con el nombre de cada sprite (`CatalogoSprites.CABALLERO = "caballero"`), para no escribir textos sueltos en el resto del código.
 - `existe(nombre)` y `nombrePorOrden(i)`.
 - `proceduralDe(nombre)`: devuelve el `Sprite` armado desde el dibujo de texto; lanza `IllegalArgumentException` si no existe.
 
@@ -3003,7 +4063,7 @@ private BufferedImage cargarArchivo(String nombre, int escala) {
 
 ### 8.5 `TextoPixel`
 
-Dibuja texto con letra gruesa de aspecto retro y una **sombra negra** desplazada 2 píxeles (se lee bien sobre cualquier fondo).
+Dibuja texto con letra gruesa de aspecto retro y una **sombra negra** desplazada 2 píxeles (se lee bien sobre cualquier fondo). Tiene una **escala global** (`TextoPixel.setEscala`) que la pantalla de opciones cambia: todo el texto del juego se multiplica por ese número (0,9 / 1,0 / 1,15) sin tocar el código de cada pantalla.
 
 ```java
 public static ListaEnlazada<String> cortarEnLineas(Graphics2D g, String texto, int anchoMax, int tamanio) {
@@ -3148,7 +4208,7 @@ public static void flecha(Graphics2D g, double x, double y, double tamanio) {
 
 ### 8.7 `ExportadorSprites`
 
-Una herramienta aparte (tiene su propio `main`): guarda los 15 sprites como `.png` en `assets/` para poder retocarlos en un editor de pixel-art. Después, `GestorSprites` los prefiere automáticamente.
+Una herramienta aparte (tiene su propio `main`): guarda los 22 sprites como `.png` en `assets/` para poder retocarlos en un editor de pixel-art. Después, `GestorSprites` los prefiere automáticamente.
 
 ---
 
@@ -3161,6 +4221,8 @@ public Recursos(String carpetaDatos, String carpetaAssets) {
     this.archivos = new GestorArchivos(carpetaDatos);
     this.sprites = new GestorSprites(carpetaAssets);
     this.eventos = archivos.cargarEventos();
+    this.opciones = archivos.cargarOpciones();
+    TextoPixel.setEscala(opciones.getEscalaTexto());
 }
 ```
 
@@ -3186,15 +4248,16 @@ Reúne los objetos que **comparten todas las pantallas**: el gestor de archivos,
 public class Main {
 
     // Punto de entrada: abre la ventana con el menú principal.
-    // Las carpetas "datos" (eventos.txt y guardado.txt) y "assets" (imágenes opcionales) están en la raíz del proyecto.
+    // Las carpetas "datos" (eventos.txt, guardado.txt y opciones.txt) y "assets" (imágenes opcionales)
+    // están en la raíz del proyecto.
     public static void main(String[] args) {
         Recursos recursos = new Recursos("datos", "assets");
-        Ventana.abrir("El Sendero Oscuro", 1024, 640, new EscenaMenu(recursos));
+        VentanaJuego.abrir("El Sendero Oscuro", recursos.getOpciones(), new EscenaMenu(recursos));
     }
 }
 ```
 
-Crea los recursos y abre la ventana del kit con una **escena inicial** (el menú). `Ventana.abrir(titulo, ancho, alto, escena)` arma la ventana de 1024×640 y arranca el bucle del juego.
+Crea los recursos (que leen también `opciones.txt`) y abre **nuestra propia ventana** (`VentanaJuego`, ver 9.11) con el menú como escena inicial. Se hizo una ventana propia porque la `Ventana` del kit tiene un tamaño fijo y no puede cambiar de resolución ni aplicar brillo.
 
 ## 10. El motor del kit (lo mínimo que hay que saber)
 
@@ -3215,7 +4278,7 @@ Como las escenas solo dependen de `Escena` y `Entrada`, **se pueden probar sin v
 
 ### 9.3 `Hud` y `Adornos`
 
-`Hud.dibujarFranja` dibuja arriba el panel de estado: corazón con barra de vida, gota con barra de maná, oro y atributos (FUE, DES, INT, DEF). La comparten el mapa, los eventos y el combate para que se vea **siempre igual**. `Adornos.antorcha` dibuja una antorcha con **llama que parpadea**: un halo naranja de 4 capas cuyo radio cambia con `Math.sin(tiempo)` mezclando dos frecuencias para que el parpadeo parezca irregular.
+`Hud.dibujarFranja` dibuja arriba el panel de estado: corazón con barra de vida, gota con barra de maná, **barra verde de energía**, oro, atributos (FUE, DES, INT, DEF) y el **nombre de la clase**. La comparten el mapa, los eventos y el combate para que se vea **siempre igual**. `Adornos.antorcha` dibuja una antorcha con **llama que parpadea**: un halo naranja de 4 capas cuyo radio cambia con `Math.sin(tiempo)` mezclando dos frecuencias para que el parpadeo parezca irregular.
 
 ### 9.4 `EscenaMenu`
 
@@ -3228,14 +4291,14 @@ public void actualizar(double dt) {
     Entrada entrada = getEntrada();
 
     if (entrada.fuePresionada(KeyEvent.VK_UP) || entrada.fuePresionada(KeyEvent.VK_W)) {
-        seleccion = (seleccion + OPCIONES - 1) % OPCIONES;
+        seleccion = (seleccion + CANTIDAD - 1) % CANTIDAD;
     }
     if (entrada.fuePresionada(KeyEvent.VK_DOWN) || entrada.fuePresionada(KeyEvent.VK_S)) {
-        seleccion = (seleccion + 1) % OPCIONES;
+        seleccion = (seleccion + 1) % CANTIDAD;
     }
 
     // Mouse: pasar por encima selecciona, hacer click confirma
-    for (int i = 0; i < OPCIONES; i++) {
+    for (int i = 0; i < CANTIDAD; i++) {
         if (estaSobreOpcion(entrada, i)) {
             if (entrada.getMouseX() != 0 || entrada.getMouseY() != 0) {
                 seleccion = i;
@@ -3257,9 +4320,7 @@ public void actualizar(double dt) {
 private void confirmar() {
     GestorArchivos archivos = recursos.getArchivos();
     if (seleccion == NUEVA) {
-        long semilla = System.currentTimeMillis() % 100000;
-        Partida partida = Partida.nueva(semilla, recursos.getEventos());
-        getContexto().irA(new EscenaMapa(recursos, partida, false));
+        getContexto().irA(new EscenaClases(recursos));
     } else if (seleccion == CONTINUAR) {
         Partida partida = archivos.existeGuardado() ? archivos.cargar(recursos.getEventos()) : null;
         if (partida == null) {
@@ -3268,7 +4329,9 @@ private void confirmar() {
         } else {
             getContexto().irA(new EscenaMapa(recursos, partida, false));
         }
-    } else {
+    } else if (seleccion == AJUSTES) {
+        getContexto().irA(new EscenaOpciones(recursos, this));
+    } else if (seleccion == SALIR) {
         getContexto().salir();
     }
 }
@@ -3277,8 +4340,9 @@ private void confirmar() {
 - `actualizar`: cada cuadro suma `dt` al `tiempo` (para las animaciones) y lee la entrada. Las flechas cambian `seleccion` con **aritmética modular**: `(seleccion + 1) % OPCIONES` vuelve a 0 después de la última; `(seleccion + OPCIONES - 1) % OPCIONES` vuelve a la última antes de la primera (se suma `OPCIONES` para que nunca sea negativo). El mouse también selecciona y confirma.
 - `alEntrar` deja marcada "Continuar" si ya hay una partida guardada.
 - `confirmar`:
-  - **Nueva partida**: semilla = `System.currentTimeMillis() % 100000` (el reloj da un número distinto cada vez) y `Partida.nueva(...)` → abre el mapa.
+  - **Nueva partida**: abre `EscenaClases` (la elección de clase; ahí se crea la partida).
   - **Continuar**: si existe el archivo, intenta `cargar`. Si devuelve `null` muestra "El archivo de guardado está dañado" **sin cerrar el juego**; si no, abre el mapa con la partida cargada.
+  - **Opciones**: abre `EscenaOpciones`, pasándole `this` para poder **volver** al menú.
   - **Salir**: `getContexto().salir()`.
 
 ### 9.5 `EscenaMapa`: dibujar el grafo y navegarlo
@@ -3286,7 +4350,7 @@ private void confirmar() {
 ```java
 public void alEntrar() {
     fondo = recursos.getFondoMapa(partida.getMapa());
-    vecinos = partida.getAdyacentes();
+    vecinos = partida.getAdyacentesOrdenados();
     ruta = partida.getRuta();
     if (autoguardar) {
         guardar("Aventura guardada automáticamente.");
@@ -3312,7 +4376,7 @@ private void avanzar() {
 }
 ```
 
-- `alEntrar` pide el fondo, la lista de **vecinos** (`partida.getAdyacentes()`: los destinos posibles desde el lugar actual) y la **ruta**. Si es el regreso de un combate o evento (`autoguardar` en `true`) **guarda la partida automáticamente**.
+- `alEntrar` pide el fondo, la lista de **vecinos** (`partida.getAdyacentesOrdenados()`: los destinos posibles desde el lugar actual, **ordenados de arriba hacia abajo** para que la flecha ↑ suba de verdad el selector) y la **ruta**. Si es el regreso de un combate o evento (`autoguardar` en `true`) **guarda la partida automáticamente**.
 - Las teclas arriba/abajo (o izquierda/derecha) cambian la selección **entre los vecinos**, no entre todos los nodos: el jugador solo puede elegir caminos que existen en el grafo.
 - `avanzar`: llama a `partida.moverA(destino)` (que apila en la ruta y en el diario) y, según el **`TipoNodo`** del destino, abre la escena que corresponde: combate (también el jefe), evento (`?`) o cofre.
 
@@ -3375,7 +4439,7 @@ Cada lugar es un **disco** (borde negro + relleno según el tipo) con el **ícon
 
 `dibujarHeroe` pinta al héroe encima del lugar actual, **saltando** con `Math.abs(Math.sin(tiempo * 3))`.
 
-La tecla **H** abre el diario: usa `partida.getUltimosRegistros(8)` (la pila inspeccionada con la auxiliar).
+La tecla **O** abre las opciones (se vuelve al mapa con ESC) y **G** guarda. La tecla **H** abre el diario: usa `partida.getUltimosRegistros(8)` (la pila inspeccionada con la auxiliar).
 
 ### 9.6 `EscenaEvento`
 
@@ -3431,11 +4495,15 @@ public void actualizar(double dt) {
     actualizarFlotantes(dt);
 
     int estado = combate.getEstado();
+    if (estado != Combate.ELECCION) {
+        menu = PRINCIPAL;
+        seleccion = 0;
+    }
     if (estado == Combate.ELECCION) {
         manejarMenu(entrada);
     } else if (estado == Combate.APUNTANDO) {
         if (entrada.fuePresionada(KeyEvent.VK_SPACE) || entrada.fuePresionada(KeyEvent.VK_ENTER) || entrada.huboClick()) {
-            combate.detenerBarra();
+            combate.pulsar();
             tiempoTexto = 0;
         }
     } else if (estado == Combate.TURNO_ENEMIGO) {
@@ -3448,6 +4516,10 @@ public void actualizar(double dt) {
     } else {
         manejarFinDeMensaje(entrada, estado);
     }
+    // Si un minijuego terminó solo por tiempo (ráfaga o anillo), se reinicia el texto del resultado
+    if (estado == Combate.APUNTANDO && combate.getEstado() != Combate.APUNTANDO) {
+        tiempoTexto = 0;
+    }
 }
 ```
 
@@ -3455,12 +4527,53 @@ public void actualizar(double dt) {
 
 | Estado | Qué hace la escena |
 |---|---|
-| `ELECCION` | `manejarMenu`: mueve la selección y llama `usar(i)` → `combate.elegirHabilidad(i)` |
-| `APUNTANDO` | Si se aprieta ESPACIO (o ENTER o click) → `combate.detenerBarra()` |
+| `ELECCION` | `manejarMenu`: mueve la selección en el **menú de acciones** y llama a `confirmar` |
+| `APUNTANDO` | Si se aprieta ESPACIO (o ENTER o click) → `combate.pulsar()` |
 | `TURNO_ENEMIGO` | Espera 0,9 segundos y llama `combate.continuar()` (o antes, si el jugador aprieta ENTER) |
 | los demás | `manejarFinDeMensaje`: espera ENTER y decide a dónde ir |
 
-Todos los cuadros se llama `combate.actualizar(dt)` (mueve la barra), `detectarGolpes()` y `actualizarFlotantes(dt)`.
+Todos los cuadros se llama `combate.actualizar(dt)` (mueve el minijuego), `detectarGolpes()` y `actualizarFlotantes(dt)`.
+
+**El menú estilo Pokémon.** Hay tres menús que se alternan con la variable `menu`:
+
+- `PRINCIPAL`: cuatro opciones en 2×2 (**Luchar**, **Magia**, **Defender**, **Huir**).
+- `LUCHAR`: el arma de la clase, los puños y "Volver" (cada uno muestra su costo de energía).
+- `MAGIA`: los hechizos del repertorio (con su costo de maná) y "Volver".
+
+```java
+private void confirmar() {
+    tiempoTexto = 0;
+    if (menu == PRINCIPAL) {
+        if (seleccion == OP_LUCHAR) {
+            menu = LUCHAR;
+            seleccion = 0;
+        } else if (seleccion == OP_MAGIA) {
+            menu = MAGIA;
+            seleccion = 0;
+        } else if (seleccion == OP_DEFENDER) {
+            combate.defender();
+        } else if (seleccion == OP_HUIR) {
+            combate.huir();
+        }
+    } else if (menu == LUCHAR) {
+        if (seleccion == 0) {
+            combate.elegirArma();
+        } else if (seleccion == 1) {
+            combate.elegirPunos();
+        } else {
+            volverAlPrincipal();
+        }
+    } else {
+        if (seleccion < partida.getJugador().cantidadHabilidades()) {
+            combate.elegirHabilidad(seleccion);
+        } else {
+            volverAlPrincipal();
+        }
+    }
+}
+```
+
+`confirmar` mira en qué menú está y qué fila está elegida: en el principal, **Luchar** y **Magia** abren su submenú, **Defender** llama a `combate.defender()` y **Huir** a `combate.huir()`; en los submenús llama a `combate.elegirArma()`, `elegirPunos()` o `elegirHabilidad(i)`. **La pantalla no decide nada de las reglas**: solo traduce una tecla en una llamada a `Combate`. Las filas sin energía o maná suficientes se muestran apagadas (`filaDisponible`) y la ayuda de abajo (`ayudaDeLaFila`) explica cada acción.
 
 ```java
 private void manejarFinDeMensaje(Entrada entrada, int estado) {
@@ -3534,6 +4647,7 @@ La escena no sabe *por qué* cambió la vida; solo observa el cambio. Eso la man
 
 ```java
 private void dibujarOrdenDeTurnos(Graphics2D g) {
+    TextoPixel.izquierda(g, "Peligro " + combate.getNivel() + "/" + Dificultad.NIVEL_MAXIMO, 24, 104, 14, Paleta.PERGAMINO);
     ColaEnlazada<Integer> orden = combate.getOrdenDeTurnos();
     TextoPixel.izquierda(g, "Turnos:", 640, 104, 14, Paleta.PERGAMINO);
     int x = 720;
@@ -3559,6 +4673,21 @@ private void dibujarOrdenDeTurnos(Graphics2D g) {
 **La cola de turnos en pantalla:** `combate.getOrdenDeTurnos()` devuelve una **copia** de la cola. Se la vacía con un `while (!orden.estaVacia())` dibujando una ficha por turno: azul con `T` (turno del jugador) o roja con `E` (enemigo). La primera tiene un borde dorado (es quien actúa ahora). Con el Lobo se ven tres fichas: T, E, E.
 
 ```java
+private void dibujarMinijuego(Graphics2D g, Minijuego minijuego) {
+    TextoPixel.centrado(g, minijuego.getInstruccion(), ANCHO / 2.0, 462, 20, Paleta.ORO);
+    if (minijuego.getTipo() == Minijuego.TIPO_BARRA) {
+        dibujarBarra(g, combate.getBarra());
+    } else if (minijuego.getTipo() == Minijuego.TIPO_RAFAGA) {
+        dibujarRafaga(g, combate.getRafaga());
+    } else {
+        dibujarAnillo(g, combate.getAnillo());
+    }
+}
+```
+
+**Los minijuegos en pantalla.** `dibujarMinijuego` le pregunta al minijuego su **tipo** (`getTipo()`) y llama a la función de dibujo que corresponde, **sin usar `instanceof`**: `Combate` ya guarda la barra, la ráfaga y el anillo en tres referencias con su tipo concreto (`getBarra()`, `getRafaga()`, `getAnillo()`), y solo una es distinta de `null`.
+
+```java
 private void dibujarBarra(Graphics2D g, BarraPrecision barra) {
     int x = (ANCHO - (int) BarraPrecision.ANCHO) / 2;
     int y = 510;
@@ -3581,21 +4710,287 @@ private void dibujarBarra(Graphics2D g, BarraPrecision barra) {
     g.fillRect(cursorX - 7, y - 10, 14, alto + 20);
     g.setColor(Color.WHITE);
     g.fillRect(cursorX - 4, y - 7, 8, alto + 14);
-    TextoPixel.centrado(g, "¡ESPACIO para frenar!", ANCHO / 2.0, 604, 18, Paleta.PERGAMINO);
 }
 ```
 
 **La barra de precisión:** se pintan tres rectángulos centrados: la zona de fondo (rojo oscuro), la **zona normal** (dorado) con el ancho que dice la barra, y la **zona crítica** (naranja) encima. Una línea blanca marca el centro. El **cursor** es un rectángulo blanco con borde negro en `x + barra.getPosicion()`. Todos los anchos vienen de la propia `BarraPrecision`: la pantalla **no calcula nada**, solo dibuja lo que la lógica le dice; por eso con más Destreza la zona crítica se ve más ancha.
 
+```java
+private void dibujarRafaga(Graphics2D g, MinijuegoRafaga rafaga) {
+    int x = 212;
+    int y = 500;
+    int ancho = 600;
+    int alto = 44;
+    g.setColor(Paleta.NEGRO);
+    g.fillRect(x - 5, y - 5, ancho + 10, alto + 10);
+    g.setColor(new Color(60, 30, 34));
+    g.fillRect(x, y, ancho, alto);
+    double llenado = Math.min(1.0, (double) rafaga.getGolpes() / rafaga.getObjetivoCritico());
+    g.setColor(llenado * rafaga.getObjetivoCritico() >= rafaga.getObjetivoNormal() ? new Color(235, 80, 50) : new Color(176, 130, 40));
+    g.fillRect(x, y, (int) (ancho * llenado), alto);
+    int marcaNormal = x + ancho * rafaga.getObjetivoNormal() / rafaga.getObjetivoCritico();
+    g.setColor(Paleta.HUESO);
+    g.fillRect(marcaNormal - 1, y - 8, 3, alto + 16);
+    TextoPixel.centrado(g, "normal", marcaNormal, y + alto + 22, 13, Paleta.PERGAMINO);
+    TextoPixel.centrado(g, "crítico", x + ancho, y + alto + 22, 13, Paleta.PERGAMINO);
+    TextoPixel.izquierda(g, rafaga.getGolpes() + " / " + rafaga.getObjetivoCritico(), x + 8, y + 31, 22, Paleta.HUESO);
+
+    // Tiempo restante
+    double resto = rafaga.getTiempoRestante() / MinijuegoRafaga.DURACION;
+    g.setColor(Paleta.NEGRO);
+    g.fillRect(x - 3, 598, ancho + 6, 16);
+    g.setColor(new Color(90, 150, 220));
+    g.fillRect(x, 601, (int) (ancho * resto), 10);
+}
+```
+
+```java
+private void dibujarAnillo(Graphics2D g, MinijuegoAnillo anillo) {
+    double escala = 0.6;
+    int cx = ANCHO / 2;
+    int cy = 545;
+    double rObjetivo = MinijuegoAnillo.RADIO_OBJETIVO * escala;
+    double rNormal = anillo.getToleranciaNormal() * escala;
+    double rCritico = anillo.getToleranciaCritica() * escala;
+    // Zona normal (dorada) y crítica (roja) alrededor de la marca
+    g.setColor(new Color(176, 130, 40, 150));
+    g.fillOval((int) (cx - rObjetivo - rNormal), (int) (cy - rObjetivo - rNormal),
+            (int) ((rObjetivo + rNormal) * 2), (int) ((rObjetivo + rNormal) * 2));
+    g.setColor(new Color(20, 16, 24));
+    double interior = Math.max(1, rObjetivo - rNormal);
+    g.fillOval((int) (cx - interior), (int) (cy - interior), (int) (interior * 2), (int) (interior * 2));
+    g.setColor(new Color(235, 80, 50));
+    g.drawOval((int) (cx - rObjetivo - rCritico), (int) (cy - rObjetivo - rCritico),
+            (int) ((rObjetivo + rCritico) * 2), (int) ((rObjetivo + rCritico) * 2));
+    g.drawOval((int) (cx - rObjetivo + rCritico), (int) (cy - rObjetivo + rCritico),
+            (int) ((rObjetivo - rCritico) * 2), (int) ((rObjetivo - rCritico) * 2));
+    // Anillo que se achica
+    double r = anillo.getRadio() * escala;
+    g.setColor(Color.WHITE);
+    g.drawOval((int) (cx - r), (int) (cy - r), (int) (r * 2), (int) (r * 2));
+    g.drawOval((int) (cx - r + 1), (int) (cy - r + 1), (int) (r * 2 - 2), (int) (r * 2 - 2));
+}
+```
+
+- **Ráfaga:** una barra que se llena con los golpes (`golpes / objetivoCritico`), una marca en el objetivo normal, el contador (`7 / 14`) y una barra fina de **tiempo restante**.
+- **Anillo:** un círculo blanco que se achica (su radio sale de `anillo.getRadio()`) hacia una **marca** de anillos concéntricos que muestran las zonas crítica y normal.
+
+Otra vez: la escena solo dibuja lo que la lógica dice.
+
 ### 9.8 `EscenaFin`
 
-Muestra la victoria o la derrota con el resumen (enemigos derrotados, lugares recorridos, oro, atributos y el último registro del diario, tomado con `getUltimosRegistros(1)`). Con ENTER vuelve al menú. Ignora la entrada durante el primer medio segundo para evitar saltearla sin querer.
+Muestra la victoria o la derrota con el resumen (enemigos derrotados, lugares recorridos, oro, atributos y el último registro del diario, tomado con `getUltimosRegistros(1)`). Con ENTER vuelve al menú. Ignora la entrada durante el primer medio segundo para evitar saltearla sin querer. Muestra el sprite de la **clase** elegida.
+
+### 9.9 `EscenaClases`
+
+Es la pantalla que aparece al elegir "Nueva partida": cuatro tarjetas (Caballero, Mago, Druida, Ladrón) con su sprite, atributos, arma y hechizo inicial.
+
+```java
+public void actualizar(double dt) {
+    tiempo += dt;
+    Entrada entrada = getEntrada();
+
+    if (entrada.fuePresionada(KeyEvent.VK_LEFT) || entrada.fuePresionada(KeyEvent.VK_A)) {
+        seleccion = (seleccion + Clase.CANTIDAD - 1) % Clase.CANTIDAD;
+    }
+    if (entrada.fuePresionada(KeyEvent.VK_RIGHT) || entrada.fuePresionada(KeyEvent.VK_D)) {
+        seleccion = (seleccion + 1) % Clase.CANTIDAD;
+    }
+    for (int i = 0; i < Clase.CANTIDAD; i++) {
+        if (entrada.fuePresionada(KeyEvent.VK_1 + i)) {
+            seleccion = i;
+        }
+        boolean encima = entrada.getMouseX() >= xTarjeta(i) && entrada.getMouseX() <= xTarjeta(i) + ANCHO_TARJETA
+                && entrada.getMouseY() >= Y_TARJETA && entrada.getMouseY() <= Y_TARJETA + ALTO_TARJETA;
+        if (encima && entrada.huboClick()) {
+            seleccion = i;
+            empezar();
+            return;
+        }
+    }
+    if (entrada.fuePresionada(KeyEvent.VK_ENTER) || entrada.fuePresionada(KeyEvent.VK_SPACE)) {
+        empezar();
+    } else if (entrada.fuePresionada(KeyEvent.VK_ESCAPE)) {
+        getContexto().irA(new EscenaMenu(recursos));
+    }
+}
+```
+
+```java
+private void empezar() {
+    long semilla = System.currentTimeMillis() % 100000;
+    Partida partida = Partida.nueva(semilla, recursos.getEventos(), Clase.porOrden(seleccion));
+    getContexto().irA(new EscenaMapa(recursos, partida, false));
+}
+```
+
+- ← → mueven la selección con aritmética modular (`(seleccion + 1) % Clase.CANTIDAD`) y las teclas `1` a `4` eligen directo. ENTER confirma, ESC vuelve al menú.
+- `empezar` calcula la **semilla** con el reloj (`System.currentTimeMillis() % 100000`: cada aventura tiene su propio mapa), crea la partida con `Partida.nueva(semilla, eventos, Clase.porOrden(seleccion))` y abre el mapa.
+- Las tarjetas se dibujan en un `for` sobre `Clase.CANTIDAD` pidiendo cada clase con `Clase.porOrden(i)`: **agregar una clase nueva no cambia esta pantalla**.
+
+### 9.10 `EscenaOpciones` y `Opciones`
+
+La pantalla de opciones permite cambiar **resolución**, **brillo** y **tamaño del texto**. `Opciones` es la clase que guarda esos tres valores.
+
+```java
+public class Opciones {
+
+    // Cantidad de valores posibles de cada opción
+    public static final int CANTIDAD_RESOLUCIONES = 3;
+    public static final int CANTIDAD_BRILLOS = 4;
+    public static final int CANTIDAD_TEXTOS = 3;
+
+    // Valores por defecto
+    public static final int RESOLUCION_INICIAL = 0;
+    public static final int BRILLO_INICIAL = 2;
+    public static final int TEXTO_INICIAL = 1;
+
+    // Atributos
+    private int resolucion = RESOLUCION_INICIAL;
+    private int brillo = BRILLO_INICIAL;
+    private int texto = TEXTO_INICIAL;
+```
+
+```java
+public void cambiarResolucion(int delta) {
+    resolucion = limitar(resolucion + delta, CANTIDAD_RESOLUCIONES);
+}
+```
+
+```java
+private static int limitar(int valor, int cantidad) {
+    return Math.max(0, Math.min(cantidad - 1, valor));
+}
+```
+
+- Cada opción es un **número de posición** (0, 1, 2...) dentro de una lista corta de valores posibles: resoluciones 1024×640, 1280×800 y 1536×960 (siempre la proporción 16:10 del juego), brillo 70/85/100/115 % y texto Pequeño/Normal/Grande (0,9 / 1,0 / 1,15).
+- `cambiarResolucion(delta)` suma +1 o -1 y **se detiene en los extremos** (`limitar`): no da la vuelta. Los `set...` validan el rango y lanzan `IllegalArgumentException`.
+- Es **un solo objeto compartido**: la pantalla lo cambia y la ventana lo lee en cada cuadro. Esto evita tener que avisarle a la ventana cuando algo cambia.
+
+```java
+private void cambiar(int delta) {
+    if (fila == RESOLUCION) {
+        opciones.cambiarResolucion(delta);
+    } else if (fila == BRILLO) {
+        opciones.cambiarBrillo(delta);
+    } else if (fila == TEXTO) {
+        opciones.cambiarTexto(delta);
+    } else {
+        return;
+    }
+    recursos.aplicarOpciones();
+}
+```
+
+- ↑ ↓ eligen la fila (aritmética modular otra vez), ← → cambian el valor, ESC o ENTER sobre "Volver" regresan a la pantalla de la que se vino (`anterior`, que se recibe por el constructor: sirve tanto desde el menú como desde el mapa).
+- `cambiar(delta)` modifica la opción de la fila actual y llama a `recursos.aplicarOpciones()`, que **actualiza la escala global del texto** y **guarda `opciones.txt`** en el momento: no hay botón "Aplicar".
+
+### 9.11 `VentanaJuego` y `Escalado`
+
+El kit tiene una `Ventana` de tamaño fijo. Para poder cambiar la resolución se escribió **una ventana propia** (`VentanaJuego`) que sigue usando el `Motor` del kit para el bucle del juego. **El juego siempre dibuja en 1024×640**; la ventana solo **agranda** el dibujo.
+
+```java
+private void aplicarResolucion() {
+    resolucionAplicada = opciones.getResolucion();
+    panel.setPreferredSize(new Dimension(opciones.getAncho(), opciones.getAlto()));
+    escalado.setTamanioReal(opciones.getAncho(), opciones.getAlto());
+    marco.pack();
+    marco.setLocationRelativeTo(null);
+}
+```
+
+```java
+private void dibujarCuadro(Graphics g) {
+    Graphics2D g2 = (Graphics2D) g.create();
+    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+    int anchoPantalla = panel.getWidth();
+    int altoPantalla = panel.getHeight();
+    g2.scale(anchoPantalla / (double) ANCHO_LOGICO, altoPantalla / (double) ALTO_LOGICO);
+    motor.dibujar(g2);
+    g2.dispose();
+    dibujarBrillo(g, anchoPantalla, altoPantalla);
+}
+```
+
+```java
+private void dibujarBrillo(Graphics g, int ancho, int alto) {
+    int porcentaje = opciones.getBrilloPorcentaje();
+    if (porcentaje == 100) {
+        return;
+    }
+    Graphics2D g2 = (Graphics2D) g.create();
+    if (porcentaje < 100) {
+        g2.setColor(Color.BLACK);
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (100 - porcentaje) / 100f * 1.4f));
+    } else {
+        g2.setColor(Color.WHITE);
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (porcentaje - 100) / 100f * 0.8f));
+    }
+    g2.fillRect(0, 0, ancho, alto);
+    g2.dispose();
+}
+```
+
+- `aplicarResolucion`: cambia el tamaño preferido del panel y llama a `pack()` para que la ventana se reacomode. En cada cuadro (`tick`) se compara la resolución de las opciones con la aplicada y, si cambió, se aplica: **el cambio se ve al instante**.
+- `dibujarCuadro`: `g2.scale(...)` agranda todo el dibujo del juego según el tamaño real de la ventana, **sin cambiar una sola línea de las pantallas**.
+- `dibujarBrillo`: el brillo no es un ajuste del monitor: es una **capa encima** del dibujo. Menor a 100 % → una capa **negra** translúcida; mayor → una capa **blanca** muy suave. (`AlphaComposite` controla la transparencia.)
+
+```java
+public class Escalado {
+
+    // Atributos
+    private final int anchoLogico;
+    private final int altoLogico;
+    private int anchoReal;
+    private int altoReal;
+
+    // Constructor: el tamaño real empieza igual al lógico
+    public Escalado(int anchoLogico, int altoLogico) {
+        if (anchoLogico <= 0 || altoLogico <= 0) {
+            throw new IllegalArgumentException("el tamaño lógico debe ser positivo");
+        }
+        this.anchoLogico = anchoLogico;
+        this.altoLogico = altoLogico;
+        this.anchoReal = anchoLogico;
+        this.altoReal = altoLogico;
+    }
+
+    public void setTamanioReal(int ancho, int alto) {
+        if (ancho <= 0 || alto <= 0) {
+            throw new IllegalArgumentException("el tamaño real debe ser positivo");
+        }
+        anchoReal = ancho;
+        altoReal = alto;
+    }
+
+    // Cuánto se agranda el dibujo en cada eje
+    public double getFactorX() {
+        return (double) anchoReal / anchoLogico;
+    }
+
+    public double getFactorY() {
+        return (double) altoReal / altoLogico;
+    }
+
+    // De píxel de la ventana a coordenada del juego
+    public int aLogicoX(int xReal) {
+        return (int) Math.round(xReal / getFactorX());
+    }
+
+    public int aLogicoY(int yReal) {
+        return (int) Math.round(yReal / getFactorY());
+    }
+}
+```
+
+**`Escalado` resuelve el mouse.** Si la ventana mide 1536×960 pero el juego "cree" que mide 1024×640, un click en el píxel real (768, 480) debe tratarse como (512, 320). `aLogicoX` y `aLogicoY` dividen por el **factor de escala** (`anchoReal / anchoLogico`) para volver a coordenadas del juego. Está en una clase aparte, sin ninguna dependencia de Swing, para poder **probarla** (`pruebasOpciones` la verifica con números exactos).
 
 ---
 
 ## 11. `PruebaJuego`: cómo se prueba todo sin abrir la ventana
 
-`juego/pruebas/PruebaJuego.java` ejecuta **265 comprobaciones** automáticas. Se corre con `java -cp out juego.pruebas.PruebaJuego`. Imprime solo las que fallan y al final el total.
+`juego/pruebas/PruebaJuego.java` ejecuta **382 comprobaciones** automáticas. Se corre con `java -cp out juego.pruebas.PruebaJuego`. Imprime solo las que fallan y al final el total.
 
 La función clave es:
 
@@ -3628,19 +5023,21 @@ Qué cubren los grupos de pruebas:
 |---|---|
 | `pruebasGrafo` | Aristas, dirección, lazos, BFS, DFS, `hayCamino`, errores |
 | `pruebasListaYTokenizador` | Inserción, borrado, casos borde del tokenizador |
-| `pruebasJugador` | Cada fórmula con los valores exactos, límites de vida/maná/oro, el repertorio de 4 |
-| `pruebasHabilidades` / `pruebasEnemigos` | Daño normal y crítico, curación, brujo que se cura cada 3, rey que pega doble cada 4 |
+| `pruebasJugador` | Cada fórmula con los valores exactos, límites de vida/maná/oro, el repertorio de 4 hechizos |
+| `pruebasHabilidades` / `pruebasEnemigos` | Daño normal y crítico, curación, brujo que se cura cada 3, rey que pega doble cada 4, los enemigos nuevos |
 | `pruebasBarra` | Zonas, efecto de la Destreza, rebote, detención |
-| `pruebasCombate` | Cola de turnos, estados, escape, victoria, derrota |
+| `pruebasNuevasMecanicas` | Las 4 clases, energía, arma y puños, hechizos nuevos, veneno (`EstadoVeneno`), guardia, huir, los tres minijuegos, la dificultad creciente y el orden de los vecinos del mapa |
+| `pruebasOpciones` | `Opciones`, guardado tolerante de `opciones.txt`, `Escalado` del mouse y las pantallas de opciones y de clases |
+| `pruebasCombate` | Cola de turnos, estados, energía, escape, victoria, derrota. Usa un **`AzarFijo`** (un `Random` que siempre da el mismo valor) para que el minijuego que sale sea siempre la barra |
 | `pruebasMapa` | **40 semillas**: todos los nodos alcanzables, sin salidas muertas, cofres en pisos 2 y 4; la misma semilla da el mismo mapa |
 | `pruebasEventos` | Lectura de eventos, descarte de los mal escritos, el `eventos.txt` real |
 | `pruebasPartida` | Movimiento, pilas de ruta y diario, determinismo por nodo, cofre, crecimiento |
-| `pruebasArchivos` | Guardar y cargar (ida y vuelta), **13 casos de archivo dañado** |
-| `pruebasSprites` | Los 15 sprites miden 16×16, `.png` propio, `.png` dañado, respaldo |
+| `pruebasArchivos` | Guardar y cargar (ida y vuelta), los casos de **archivo dañado** (número roto, clase inexistente, hechizos de más...) |
+| `pruebasSprites` | Los 22 sprites miden 16×16, `.png` propio, `.png` dañado, respaldo |
 | `pruebasPantallas` | Las escenas con el motor sin ventana: teclas simuladas y `capturar()` |
-| `pruebasAventuraCompleta` | Un **jugador robot** juega 60 aventuras completas |
+| `pruebasAventuraCompleta` | Un **jugador robot** juega 40 aventuras completas con **cada una de las 4 clases** |
 
-**El jugador robot:** elige caminos, decide eventos al azar, cura cuando le falta vida y frena la barra con una puntería regular. Sirve para comprobar dos cosas: que **ninguna partida se traba** (siempre se puede avanzar) y que el juego **no es imposible ni trivial** (el robot gana algunas y pierde otras). Con él se ajustaron las cifras de los enemigos.
+**El jugador robot:** elige caminos, decide eventos al azar, cura cuando le falta vida, usa el hechizo ofensivo más caro que pueda pagar, después el arma, después los puños y, si no le queda energía, se defiende. Juega los tres minijuegos con una puntería regular. Sirve para comprobar dos cosas: que **ninguna partida se traba** (siempre se puede avanzar) y que el juego **no es imposible ni trivial** (el robot gana algunas y pierde otras). Con él se ajustaron las cifras de los enemigos **y de las clases** (el arma del Caballero cuesta 7 de energía y la del Ladrón pega 150 % porque con las primeras cifras el Caballero ganaba casi siempre y el Ladrón nunca).
 
 ---
 
@@ -3649,21 +5046,22 @@ Qué cubren los grupos de pruebas:
 Seguimos una partida completa nombrando qué clase hace cada cosa:
 
 1. **`Main`** crea `Recursos` (lee `datos/eventos.txt` con `GestorArchivos.cargarEventos`) y abre la ventana con `EscenaMenu`.
-2. En el menú, el jugador elige **Nueva partida**. `EscenaMenu.confirmar` llama a `Partida.nueva(semilla, eventos)`:
+2. En el menú, el jugador elige **Nueva partida** y `EscenaClases` le pide la **clase**. Al confirmar llama a `Partida.nueva(semilla, eventos, clase)`:
    - `MapaBosque(semilla)` genera el **grafo** con `Random(semilla)`.
-   - Se crea un `Jugador` (3/3/3, vida 35, maná 15, solo sabe atacar).
+   - Se crea un `Jugador` de esa clase (por ejemplo el Druida: 3/3/3, vida 35, maná 15, energía 12, con el hechizo Savia vital).
    - Se apila el nodo de inicio en la **pila de la ruta** y la primera línea en la **pila del diario**.
 3. `EscenaMapa` dibuja el grafo. El jugador elige un vecino y aprieta ENTER → `partida.moverA(id)` apila en las dos pilas.
 4. Si el lugar es un **combate**, `EscenaCombate` crea un `Combate`:
-   - Se arma la **cola de turnos** `[J, E]`.
-   - El jugador elige *Ataque* → `Combate.elegirHabilidad(0)` → se crea la `BarraPrecision` (la **Destreza** define su dificultad).
-   - Aprieta ESPACIO → `detenerBarra()` → la barra devuelve una `Calidad` → `HabilidadAtaque.aplicar` usa la **Fuerza** (`getDanioFisico`) y el enemigo pierde vida.
-   - Se desencola `J` y el frente es `E`: el enemigo ataca (`Esqueleto.accionar`) y la **Defensa** (Destreza ÷ 2) reduce el daño.
+   - Se llena la **energía** (`prepararCombate`) y se arma la **cola de turnos** `[J, E]`.
+   - El jugador elige *Luchar → arma* → `Combate.elegirArma()` → se **paga la energía** y se elige **al azar** un minijuego (barra, ráfaga o anillo; el **nivel** de dificultad lo vuelve más rápido a medida que gana peleas).
+   - Aprieta ESPACIO → `pulsar()` → el minijuego devuelve una `Calidad` → `HabilidadArma.aplicar` usa la **Fuerza** (`getDanioFisico`) y el enemigo pierde vida.
+   - Se desencola `J` (y se cobra el **veneno** si lo hay) y el frente es `E`: el enemigo ataca (`Esqueleto.accionar`) y la **Defensa** (Destreza ÷ 2) reduce el daño; si el héroe había elegido **Defender**, el golpe vale la mitad.
+   - Al empezar la ronda siguiente se recuperan 3 de **energía**.
    - Cuando el enemigo cae: `VICTORIA`, oro, `partida.sumarDerrotado()` (cada 2, +1 atributo).
 5. Se vuelve al mapa: **autoguardado** → `GestorArchivos.guardar` escribe `datos/guardado.txt` con `PrintWriter`.
 6. Si el lugar es un **evento**, `EscenaEvento` muestra 2 o 3 opciones (una lista enlazada); la elegida aplica sus efectos (otra lista) y se anota en el diario.
-7. Si el lugar es un **cofre**, `Partida.crearEventoCofre()` arma el evento con la próxima habilidad por aprender: el repertorio (**lista**) crece hasta 4.
-8. El jugador cierra el juego. Al volver, elige **Continuar**: `GestorArchivos.cargar` lee el archivo con `BufferedReader`, regenera el mapa con la semilla, valida que la ruta sea un camino real del grafo y reconstruye las pilas.
+7. Si el lugar es un **cofre**, `Partida.crearEventoCofre()` arma el evento con el próximo hechizo por aprender: el repertorio (**lista**) crece hasta 4 hechizos.
+8. El jugador cierra el juego. Al volver, elige **Continuar**: `GestorArchivos.cargar` lee el archivo con `BufferedReader`, recupera la **clase**, regenera el mapa con la semilla, valida que la ruta sea un camino real del grafo y reconstruye las pilas.
 9. Llega al **jefe** (el único destino del último piso). Si vence al Rey Oscuro: se **borra el guardado** y aparece `EscenaFin` con la victoria. Si cae: lo mismo con la pantalla de derrota.
 
 Esto muestra cómo las **cuatro estructuras** cumplen un papel distinto y necesario:

@@ -3,8 +3,8 @@
 Roguelike 2D de toma de decisiones con estética de fantasía medieval pixel-art, inspirado en *Peglin*.
 Proyecto final de **Programación II** (Kit Game Jam Java del profesor Goya). Desarrollo individual: William.
 
-Elegís tu camino por un bosque ramificado (un **grafo**), enfrentás eventos con 2 o 3 decisiones y peleás
-con un minijuego de precisión estilo *Undertale*. Si llegás al Rey Oscuro y lo vencés, ganás. Si caés, perdés la partida.
+Elegís una clase (caballero, mago, druida o ladrón), recorrés un bosque ramificado (un **grafo**), enfrentás eventos
+con 2 o 3 decisiones y peleás por turnos con minijuegos de precisión estilo *Undertale*. Si llegás al Rey Oscuro y lo vencés, ganás. Si caés, perdés la partida.
 
 ## Compilar y ejecutar
 
@@ -20,7 +20,7 @@ En un IDE: abrí `src` como carpeta de fuentes, codificación **UTF-8**, y que e
 
 | Para qué | Comando |
 | --- | --- |
-| Pruebas del juego (265 comprobaciones, sin ventana) | `java -cp out juego.pruebas.PruebaJuego` |
+| Pruebas del juego (382 comprobaciones, sin ventana) | `java -cp out juego.pruebas.PruebaJuego` |
 | Verificador de las estructuras del kit (Lista, Pila, Cola) | `java -cp out verificador.PruebaMisEstructuras` |
 | Exportar los sprites a `assets/` para editarlos | `java -cp out juego.graficos.ExportadorSprites` |
 
@@ -28,17 +28,22 @@ En un IDE: abrí `src` como carpeta de fuentes, codificación **UTF-8**, y que e
 
 | Pantalla | Teclas |
 | --- | --- |
-| Menú | ↑ ↓ elegir, ENTER confirmar (también funciona el mouse) |
-| Mapa | ↑ ↓ (o ← →) elegir destino, ENTER avanzar, **H** diario, **G** guardar, ESC guardar y volver al menú |
+| Menú | ↑ ↓ elegir, ENTER confirmar (también funciona el mouse). "Opciones" cambia resolución, brillo y tamaño del texto |
+| Elegir clase | ← → elegir (o números 1 a 4), ENTER empezar, ESC volver |
+| Mapa | ↑ ↓ (o ← →) elegir destino (↑ sube, ↓ baja), ENTER avanzar, **H** diario, **G** guardar, **O** opciones, ESC guardar y volver al menú |
 | Evento / cofre | ↑ ↓ o números 1 a 3, ENTER decidir |
-| Combate | ← → ↑ ↓ o números 1 a 4 para elegir habilidad; **ESPACIO** frena la barra de precisión; ENTER continúa |
+| Combate | Menú estilo Pokémon: **Luchar** (arma o puños), **Magia**, **Defender** y **Huir**; ← → ↑ ↓ o números para elegir, ESC vuelve al menú anterior. **ESPACIO** juega el minijuego; ENTER continúa |
 
 ## El juego en una página
 
-- **Héroe humano único** con Fuerza (vida y daño), Destreza (defensa y barra más fácil) e Inteligencia (maná, hechizos y curación).
-- **4 habilidades** que se desbloquean en eventos y cofres: Ataque con arma, Luz sanadora, Golpe arcano y Paso sombrío (escape; no sirve contra el jefe).
+- **Héroe humano con 4 clases**: Caballero (resistente, espada), Mago (mucho maná, bastón), Druida (equilibrado, savia que cura) y Ladrón (ágil, dagas con crítico x3 y veneno). Cada una tiene atributos, arma y hechizo inicial propios.
+- **Atributos**: Fuerza (vida y daño físico), Destreza (defensa, energía y huida) e Inteligencia (maná y poder mágico).
+- **Dos recursos**: el **maná** paga los hechizos (máximo 4 por héroe, se aprenden en eventos y cofres: Luz sanadora, Golpe arcano, Paso sombrío, Tajo heroico, Savia vital y Daga envenenada) y la **energía** paga el arma (cuesta más o menos según la clase) y los puños (2). La energía se llena al empezar cada combate y recupera 3 por ronda; **Defender** da +4 de energía y reduce a la mitad el daño de la ronda.
+- **Acciones de combate**: Luchar, Magia, Defender y Huir (probabilidad según la Destreza; no se puede huir del jefe).
+- **Tres minijuegos al azar** al atacar: *barra de precisión* (frenar el cursor), *ráfaga* (machacar ESPACIO antes de que se acabe el tiempo) y *anillo* (apretar cuando el aro toca la marca). Cuantos más enemigos derrotás, más rápidos y más exigentes se vuelven (nivel hasta 12).
+- **7 tipos de enemigos** que aparecen según el piso: Esqueleto, Lobo, Goblin (roba oro), Araña (envenena), Brujo (se cura), Espectro (se cura al golpear), Golem (golpe doble cargado) y el jefe Rey Oscuro. Algunos usan **veneno**, que también puede usar el jugador.
 - **Mapa en grafo**: 7 pisos, cada lugar es una calavera (combate), un `?` (evento, puede ser una pelea), un cofre o el jefe final.
-- **Barra de precisión**: frenás el cursor; cerca del centro es crítico, en la zona media es normal, afuera es fallo.
+- **Opciones**: resolución (1024x640, 1280x800, 1536x960), brillo y tamaño del texto; se guardan en `datos/opciones.txt`.
 - **Guardado automático** en `datos/guardado.txt`; los eventos se leen de `datos/eventos.txt` (podés agregar los tuyos).
 
 ## Estructura
@@ -49,15 +54,17 @@ src/                  código fuente (Java)
   utilidades/         librería propia: Tokenizador (parte textos sin arreglos)
   motor/ contratos/ ui/ verificador/   kit del profesor (no se modifica salvo PruebaMisEstructuras)
   juego/
-    entidades/        Jugador, Habilidad (y 4 hijas), Enemigo (y 4 hijos), fábricas
-    reglas/           Combate, BarraPrecision, MapaBosque, Partida, eventos
+    entidades/        Jugador, Clase (enum), Habilidad (y sus hijas), Enemigo (y sus hijos), fábricas
+    reglas/           Combate, Minijuego (barra, ráfaga, anillo), Dificultad, MapaBosque, Partida, eventos
     archivos/         GestorArchivos (persistencia con java.io)
     graficos/         Sprites, paleta y dibujo medieval con Graphics2D
     recursos/         Recursos (objetos compartidos entre pantallas)
-    pantallas/        Escenas: menú, mapa, evento, combate, fin
+    opciones/         Opciones (resolución, brillo, texto)
+    ventana/          VentanaJuego y Escalado (ventana con tamaño elegido; el juego sigue dibujando en 1024x640)
+    pantallas/        Escenas: menú, opciones, clases, mapa, evento, combate, fin
     pruebas/          PruebaJuego
 assets/               imágenes .png opcionales (si no están, se dibuja todo con Graphics2D)
-datos/                eventos.txt (lectura) y guardado.txt (se crea al jugar)
+datos/                eventos.txt (lectura); guardado.txt y opciones.txt (se crean al jugar)
 docs/                 documentación para la entrega y la defensa oral
 ```
 

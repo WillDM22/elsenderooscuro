@@ -8,41 +8,60 @@ import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.PrintWriter;
+import java.util.Random;
 import javax.imageio.ImageIO;
 import juego.recursos.Recursos;
 import juego.archivos.GestorArchivos;
+import juego.entidades.Arana;
 import juego.entidades.Brujo;
 import juego.entidades.Calidad;
 import juego.entidades.CatalogoHabilidades;
+import juego.entidades.Clase;
 import juego.entidades.Enemigo;
+import juego.entidades.EstadoVeneno;
 import juego.entidades.Esqueleto;
+import juego.entidades.Espectro;
 import juego.entidades.FabricaEnemigos;
+import juego.entidades.Goblin;
+import juego.entidades.Golem;
 import juego.entidades.Habilidad;
-import juego.entidades.HabilidadAtaque;
+import juego.entidades.HabilidadArma;
 import juego.entidades.HabilidadCuracion;
 import juego.entidades.HabilidadEscape;
+import juego.entidades.HabilidadFuria;
 import juego.entidades.HabilidadGolpePotente;
+import juego.entidades.HabilidadPunos;
+import juego.entidades.HabilidadSavia;
+import juego.entidades.HabilidadVeneno;
 import juego.entidades.Jugador;
 import juego.entidades.Lobo;
 import juego.entidades.ReyOscuro;
 import juego.graficos.CatalogoSprites;
 import juego.graficos.GestorSprites;
 import juego.graficos.Sprite;
+import juego.opciones.Opciones;
+import juego.pantallas.EscenaClases;
 import juego.pantallas.EscenaCombate;
 import juego.pantallas.EscenaEvento;
 import juego.pantallas.EscenaFin;
 import juego.pantallas.EscenaMapa;
 import juego.pantallas.EscenaMenu;
+import juego.pantallas.EscenaOpciones;
 import juego.reglas.BarraPrecision;
 import juego.reglas.Combate;
+import juego.reglas.Dificultad;
 import juego.reglas.EfectoEvento;
 import juego.reglas.EventoNarrativo;
 import juego.reglas.MapaBosque;
+import juego.reglas.Minijuego;
+import juego.reglas.MinijuegoAnillo;
+import juego.reglas.MinijuegoRafaga;
 import juego.reglas.NodoMapa;
 import juego.reglas.OpcionEvento;
 import juego.reglas.Partida;
 import juego.reglas.Registro;
 import juego.reglas.TipoNodo;
+import juego.ventana.Escalado;
 import motor.Motor;
 import utilidades.Tokenizador;
 
@@ -63,6 +82,8 @@ public class PruebaJuego {
         pruebasBarra();
         pruebasEnemigos();
         pruebasCombate();
+        pruebasNuevasMecanicas();
+        pruebasOpciones();
         pruebasMapa();
         pruebasEventos();
         pruebasPartida();
@@ -179,7 +200,7 @@ public class PruebaJuego {
         comprobar("jugador: daño físico = 2 + 2*Fuerza = 8", j.getDanioFisico() == 8);
         comprobar("jugador: potencia mágica = 3 + 3*Inteligencia = 12", j.getPotenciaMagica() == 12);
         comprobar("jugador: curación = 6 + 3*Inteligencia = 15", j.getPotenciaCuracion() == 15);
-        comprobar("jugador: empieza con 1 habilidad (ataque)", j.cantidadHabilidades() == 1 && j.conoceHabilidad("ATAQUE"));
+        comprobar("jugador: el druida empieza con 1 hechizo (savia)", j.cantidadHabilidades() == 1 && j.conoceHabilidad("SAVIA"));
         comprobar("jugador: empieza sin oro", j.getOro() == 0);
 
         int real = j.recibirDanio(5);
@@ -233,13 +254,14 @@ public class PruebaJuego {
 
         // Repertorio: máximo 4, sin repetidos, en orden del catálogo
         Jugador h = new Jugador();
-        comprobar("repertorio: no repite habilidades", !h.aprenderHabilidad(new HabilidadAtaque()));
+        comprobar("repertorio: no repite habilidades", !h.aprenderHabilidad(new HabilidadSavia()));
         comprobar("repertorio: próxima por aprender = CURACION", "CURACION".equals(h.proximaHabilidadPorAprender()));
         comprobar("repertorio: aprende curación", h.aprenderHabilidad(new HabilidadCuracion()));
         comprobar("repertorio: aprende golpe", h.aprenderHabilidad(new HabilidadGolpePotente()));
         comprobar("repertorio: aprende escape", h.aprenderHabilidad(new HabilidadEscape()));
         comprobar("repertorio: llega a 4", h.cantidadHabilidades() == Jugador.MAX_HABILIDADES);
-        comprobar("repertorio: ya no queda nada por aprender", h.proximaHabilidadPorAprender() == null);
+        comprobar("repertorio: con 4 hechizos ya no hay lugar para aprender más", h.proximaHabilidadPorAprender() == null);
+        comprobar("repertorio: el quinto hechizo se rechaza", !h.aprenderHabilidad(new HabilidadFuria()));
         comprobar("repertorio: getHabilidad(1) es la curación", h.getHabilidad(1).getCodigo().equals("CURACION"));
     }
 
@@ -247,18 +269,18 @@ public class PruebaJuego {
     private static void pruebasHabilidades() {
         Jugador j = new Jugador();
         Enemigo e = new Esqueleto();
-        Habilidad ataque = new HabilidadAtaque();
+        Habilidad ataque = j.getArma();
         String texto = ataque.aplicar(j, e, Calidad.NORMAL);
-        comprobar("ataque normal hace 8 de daño", e.getVida() == 10 && texto.contains("8"));
-        comprobar("ataque recupera 2 de maná", j.getMana() == 15);
+        comprobar("arma del druida (100% de 8): daño normal 8", e.getVida() == 10 && texto.contains("8"));
+        comprobar("arma: al acertar recupera 2 de maná (ya estaba lleno)", j.getMana() == 15);
         j.cambiarMana(-5);
         ataque.aplicar(j, e, Calidad.CRITICO);
-        comprobar("ataque crítico hace el doble (16, tope de la vida restante)", e.getVida() == 0);
-        comprobar("ataque acertado devuelve 2 de maná", j.getMana() == 12);
+        comprobar("arma: crítico x2 (16, tope de la vida restante)", e.getVida() == 0);
+        comprobar("arma acertada devuelve 2 de maná", j.getMana() == 12);
         Enemigo e2 = new Esqueleto();
         ataque.aplicar(j, e2, Calidad.FALLO);
-        comprobar("ataque fallado no hace daño", e2.getVida() == 18);
-        comprobar("ataque cuesta 0 maná y usa barra", ataque.getCostoMana() == 0 && ataque.usaBarra());
+        comprobar("arma fallada no hace daño", e2.getVida() == 18);
+        comprobar("arma: 0 maná, 4 de energía y usa barra", ataque.getCostoMana() == 0 && ataque.getCostoEnergia() == 4 && ataque.usaBarra());
 
         Habilidad cura = new HabilidadCuracion();
         j.recibirDanio(20);
@@ -279,7 +301,7 @@ public class PruebaJuego {
         comprobar("escape: esEscape y no usa barra", escape.esEscape() && !escape.usaBarra() && escape.getCostoMana() == 3);
         comprobar("las demás habilidades no son escape", !ataque.esEscape() && !cura.esEscape() && !golpe.esEscape());
 
-        comprobar("catálogo: 4 habilidades", CatalogoHabilidades.CANTIDAD == 4);
+        comprobar("catálogo: 6 hechizos", CatalogoHabilidades.CANTIDAD == 6);
         comprobar("catálogo: crear por código", CatalogoHabilidades.crear("GOLPE").getNombre().equals(golpe.getNombre()));
         comprobar("catálogo: código inválido", !CatalogoHabilidades.esValido("FUEGO") && CatalogoHabilidades.esValido("ESCAPE"));
         try {
@@ -401,75 +423,97 @@ public class PruebaJuego {
     }
 
     // Combate
+    // Generador de azar que siempre devuelve el mismo valor: así el minijuego que sale (0 = barra) y el resultado
+    // de huir (0 = siempre se logra, 99 = nunca) quedan fijos en las pruebas.
+    @SuppressWarnings("serial")
+    private static class AzarFijo extends Random {
+        private int valor;
+
+        private AzarFijo(int valor) {
+            this.valor = valor;
+        }
+
+        @Override
+        public int nextInt(int limite) {
+            return Math.min(valor, limite - 1);
+        }
+    }
+
+    private static Combate nuevoCombate(Jugador j, Enemigo e, boolean jefe) {
+        return new Combate(j, e, jefe, 0, new AzarFijo(0));
+    }
+
     private static void pruebasCombate() {
-        Jugador j = new Jugador();
-        Combate c = new Combate(j, new Lobo(), false);
+        Jugador j = new Jugador(Clase.CABALLERO);
+        Combate c = nuevoCombate(j, new Lobo(), false);
         comprobar("combate: empieza eligiendo el jugador", c.getEstado() == Combate.ELECCION);
         ColaEnlazada<Integer> orden = c.getOrdenDeTurnos();
         comprobar("combate: la cola tiene J, E, E (lobo veloz)",
                 orden.tamanio() == 3 && orden.desencolar() == Combate.JUGADOR && orden.desencolar() == Combate.ENEMIGO
                         && orden.desencolar() == Combate.ENEMIGO);
         comprobar("combate: mirar la cola no la consume", c.getOrdenDeTurnos().tamanio() == 3);
-        comprobar("combate: habilidad inexistente se rechaza", !c.elegirHabilidad(3));
+        comprobar("combate: hechizo inexistente se rechaza", !c.elegirHabilidad(3) && !c.elegirHabilidad(-1));
 
-        comprobar("combate: elegir ataque pasa a APUNTANDO", c.elegirHabilidad(0) && c.getEstado() == Combate.APUNTANDO);
-        comprobar("combate: durante la barra no se puede elegir otra", !c.elegirHabilidad(0));
+        comprobar("combate: elegir el arma pasa a APUNTANDO", c.elegirArma() && c.getEstado() == Combate.APUNTANDO);
+        comprobar("combate: el arma gastó 7 de energía", j.getEnergia() == 5);
+        comprobar("combate: durante el minijuego no se puede elegir otra acción", !c.elegirArma() && !c.defender());
         c.getBarra().setPosicion(300);
-        c.detenerBarra();
+        c.pulsar();
         comprobar("combate: tras frenar hay RESULTADO", c.getEstado() == Combate.RESULTADO);
-        comprobar("combate: el crítico (16) derrotó al lobo (14 de vida)", c.getEnemigo().estaMuerto());
+        comprobar("combate: el crítico (20) derrotó al lobo (14 de vida)", c.getEnemigo().estaMuerto());
         comprobar("combate: el turno del jugador salió de la cola", c.getOrdenDeTurnos().tamanio() == 2);
 
         // Un combate más largo con un esqueleto
-        Jugador j2 = new Jugador();
-        Combate c2 = new Combate(j2, new Esqueleto(), false);
-        c2.elegirHabilidad(0);
+        Jugador j2 = new Jugador(Clase.CABALLERO);
+        Combate c2 = nuevoCombate(j2, new Esqueleto(), false);
+        c2.elegirArma();
         c2.getBarra().setPosicion(200);
-        c2.detenerBarra();
-        comprobar("combate: golpe normal (8) al esqueleto", c2.getEnemigo().getVida() == 10);
+        c2.pulsar();
+        comprobar("combate: golpe normal (10) al esqueleto", c2.getEnemigo().getVida() == 8);
         c2.continuar();
         comprobar("combate: después del resultado toca el enemigo", c2.getEstado() == Combate.TURNO_ENEMIGO);
         c2.continuar();
-        comprobar("combate: el enemigo hirió al jugador", j2.getVida() == 31 && c2.getEstado() == Combate.RESULTADO);
+        comprobar("combate: el enemigo hirió al jugador (5-1)", j2.getVida() == 41 && c2.getEstado() == Combate.RESULTADO);
         c2.continuar();
         comprobar("combate: nueva ronda, vuelve a elegir el jugador", c2.getEstado() == Combate.ELECCION && c2.getRondas() == 2);
+        comprobar("combate: nueva ronda recupera 3 de energía (5 -> 8)", j2.getEnergia() == 8);
 
         // Maná insuficiente
         Jugador j3 = new Jugador();
         j3.aprenderHabilidad(new HabilidadCuracion());
         j3.cambiarMana(-100);
-        Combate c3 = new Combate(j3, new Esqueleto(), false);
+        Combate c3 = nuevoCombate(j3, new Esqueleto(), false);
         comprobar("combate: sin maná no se puede curar", !c3.elegirHabilidad(1) && c3.getEstado() == Combate.ELECCION);
 
         // Curación sin barra
         Jugador j4 = new Jugador();
         j4.aprenderHabilidad(new HabilidadCuracion());
         j4.recibirDanio(20);
-        Combate c4 = new Combate(j4, new Esqueleto(), false);
+        Combate c4 = nuevoCombate(j4, new Esqueleto(), false);
         c4.elegirHabilidad(1);
         comprobar("combate: la curación se resuelve sin barra (16 + 15 = 31)", c4.getEstado() == Combate.RESULTADO && j4.getVida() == 31);
         comprobar("combate: la curación gastó 4 de maná", j4.getMana() == 11);
 
-        // Escape
+        // Escape (hechizo)
         Jugador j5 = new Jugador();
         j5.aprenderHabilidad(new HabilidadCuracion());
         j5.aprenderHabilidad(new HabilidadGolpePotente());
         j5.aprenderHabilidad(new HabilidadEscape());
-        Combate c5 = new Combate(j5, new Esqueleto(), false);
+        Combate c5 = nuevoCombate(j5, new Esqueleto(), false);
         comprobar("combate: se puede huir de un combate normal", c5.elegirHabilidad(3) && c5.getEstado() == Combate.HUIDA);
         comprobar("combate: huir terminó el combate", c5.haTerminado());
-        Combate jefe = new Combate(j5, new ReyOscuro(), true);
+        Combate jefe = nuevoCombate(j5, new ReyOscuro(), true);
         comprobar("combate: no se puede huir del jefe", !jefe.elegirHabilidad(3) && jefe.getEstado() == Combate.ELECCION);
         comprobar("combate: no se gastó maná al intentar huir del jefe", j5.getMana() == 12);
 
         // Victoria
-        Jugador j6 = new Jugador();
+        Jugador j6 = new Jugador(Clase.CABALLERO);
         Enemigo debil = new Esqueleto();
         debil.recibirDanio(17);
-        Combate c6 = new Combate(j6, debil, false);
-        c6.elegirHabilidad(0);
+        Combate c6 = nuevoCombate(j6, debil, false);
+        c6.elegirArma();
         c6.getBarra().setPosicion(300);
-        c6.detenerBarra();
+        c6.pulsar();
         c6.continuar();
         comprobar("combate: victoria cuando el enemigo cae", c6.getEstado() == Combate.VICTORIA && c6.haTerminado());
         comprobar("combate: la victoria da el oro (6)", j6.getOro() == 6);
@@ -477,10 +521,10 @@ public class PruebaJuego {
         // Derrota
         Jugador j7 = new Jugador();
         j7.recibirDanio(34);
-        Combate c7 = new Combate(j7, new Esqueleto(), false);
-        c7.elegirHabilidad(0);
+        Combate c7 = nuevoCombate(j7, new Esqueleto(), false);
+        c7.elegirArma();
         c7.getBarra().setPosicion(0);
-        c7.detenerBarra();
+        c7.pulsar();
         c7.continuar();
         c7.continuar();
         c7.continuar();
@@ -491,6 +535,410 @@ public class PruebaJuego {
         } catch (IllegalArgumentException ex) {
             comprobar("combate: sin jugador lanza excepción", true);
         }
+    }
+
+    // Lo nuevo: clases, energía, armas, puños, defender, huir, veneno, minijuegos al azar y dificultad creciente
+    private static void pruebasNuevasMecanicas() {
+        // Clases
+        comprobar("clases: son 4", Clase.CANTIDAD == 4 && Clase.porOrden(0) == Clase.CABALLERO && Clase.porOrden(3) == Clase.LADRON);
+        Jugador caballero = new Jugador(Clase.CABALLERO);
+        comprobar("caballero: 5/3/1, vida 45 y maná 9", caballero.getFuerza() == 5 && caballero.getDestreza() == 3
+                && caballero.getInteligencia() == 1 && caballero.getVidaMaxima() == 45 && caballero.getManaMaximo() == 9);
+        comprobar("caballero: empieza con Tajo heroico", caballero.conoceHabilidad("FURIA") && caballero.cantidadHabilidades() == 1);
+        Jugador mago = new Jugador(Clase.MAGO);
+        comprobar("mago: 1/3/5, vida 25 y maná 21", mago.getVidaMaxima() == 25 && mago.getManaMaximo() == 21 && mago.conoceHabilidad("GOLPE"));
+        Jugador ladron = new Jugador(Clase.LADRON);
+        comprobar("ladrón: 2/5/2, energía 16 y veneno", ladron.getEnergiaMaxima() == 16 && ladron.conoceHabilidad("VENENO"));
+        comprobar("clases: porCodigo válido e inválido", Clase.porCodigo("MAGO") == Clase.MAGO && Clase.porCodigo("BARBARO") == null
+                && Clase.porCodigo(null) == null);
+        try {
+            Clase.porOrden(9);
+            comprobar("clases: orden inválido debe fallar", false);
+        } catch (IllegalArgumentException ex) {
+            comprobar("clases: orden inválido lanza excepción", true);
+        }
+
+        // Energía
+        Jugador j = new Jugador(Clase.CABALLERO);
+        comprobar("energía: máxima = 6 + 2*Destreza = 12 y empieza llena", j.getEnergiaMaxima() == 12 && j.getEnergia() == 12);
+        j.gastarEnergia(5);
+        comprobar("energía: gastar baja la energía", j.getEnergia() == 7 && j.puedePagarEnergia(7) && !j.puedePagarEnergia(8));
+        j.recuperarEnergia(100);
+        comprobar("energía: no pasa del máximo", j.getEnergia() == 12);
+        try {
+            j.gastarEnergia(50);
+            comprobar("energía: gastar de más debe fallar", false);
+        } catch (IllegalArgumentException ex) {
+            comprobar("energía: gastar de más lanza excepción", true);
+        }
+        j.mejorarAtributo(Jugador.DESTREZA, 1);
+        comprobar("energía: +1 Destreza sube el máximo (14) y la energía actual", j.getEnergiaMaxima() == 14 && j.getEnergia() == 14);
+
+        // Armas y puños
+        Enemigo dummy = new Golem();
+        HabilidadArma espada = caballero.getArma();
+        comprobar("espada: cuesta 7 de energía, 0 de maná", espada.getCostoEnergia() == 7 && espada.getCostoMana() == 0
+                && espada.getNombre().equals("Espada"));
+        espada.aplicar(caballero, dummy, Calidad.NORMAL);
+        comprobar("espada: daño normal = 10 (90% de 12)", dummy.getVida() == 20);
+        HabilidadArma dagas = ladron.getArma();
+        Enemigo dummy2 = new Golem();
+        dagas.aplicar(ladron, dummy2, Calidad.CRITICO);
+        comprobar("dagas: crítico x3 (150% de 6 = 9, x3 = 27)", dummy2.getVida() == 30 - 27 && dagas.getMultiplicadorCritico() == 3);
+        comprobar("bastón del mago recupera 4 de maná", mago.getArma().getManaRecuperado() == 4);
+        HabilidadPunos punos = caballero.getPunos();
+        Enemigo dummy3 = new Golem();
+        punos.aplicar(caballero, dummy3, Calidad.NORMAL);
+        comprobar("puños: 1 + Fuerza = 6 de daño, 2 de energía", dummy3.getVida() == 24 && punos.getCostoEnergia() == 2);
+        comprobar("puños: más fáciles que la barra normal", punos.getDificultadBarra() > 1.0);
+        try {
+            new HabilidadArma("X", 3, 0, 2, 1);
+            comprobar("arma: porcentaje 0 debe fallar", false);
+        } catch (IllegalArgumentException ex) {
+            comprobar("arma: porcentaje 0 lanza excepción", true);
+        }
+
+        // Hechizos nuevos
+        Enemigo victima = new Golem();
+        Jugador cab2 = new Jugador(Clase.CABALLERO);
+        new HabilidadFuria().aplicar(cab2, victima, Calidad.NORMAL);
+        comprobar("tajo heroico: 12 * 3/2 = 18", victima.getVida() == 12);
+        Jugador dru = new Jugador(Clase.DRUIDA);
+        dru.recibirDanio(10);
+        int vidaAntes = dru.getVida();
+        Enemigo v2 = new Golem();
+        new HabilidadSavia().aplicar(dru, v2, Calidad.NORMAL);
+        comprobar("savia: 12*2/3 = 8 de daño y cura la mitad (4)", v2.getVida() == 22 && dru.getVida() == vidaAntes + 4);
+        Enemigo v3 = new Golem();
+        new HabilidadVeneno().aplicar(ladron, v3, Calidad.NORMAL);
+        comprobar("daga envenenada: 3/4 de 6 = 4 de daño y queda envenenado", v3.getVida() == 26 && v3.estaEnvenenado());
+        int tick = v3.aplicarVeneno();
+        comprobar("veneno: cada turno quita 2 + Destreza/2 = 4", tick == 4 && v3.getVida() == 22);
+
+        // EstadoVeneno
+        EstadoVeneno ve = new EstadoVeneno();
+        comprobar("veneno: sin aplicar no hace nada", !ve.estaActivo() && ve.pasarTurno() == 0);
+        ve.aplicar(2, 3);
+        comprobar("veneno: dura 2 turnos", ve.pasarTurno() == 3 && ve.estaActivo() && ve.pasarTurno() == 3 && !ve.estaActivo());
+        ve.aplicar(2, 3);
+        ve.aplicar(1, 5);
+        comprobar("veneno: al renovar queda el más fuerte y el más largo", ve.getDanio() == 5 && ve.getTurnos() == 2);
+        ve.limpiar();
+        comprobar("veneno: limpiar lo quita", !ve.estaActivo());
+        try {
+            ve.aplicar(0, 3);
+            comprobar("veneno: 0 turnos debe fallar", false);
+        } catch (IllegalArgumentException ex) {
+            comprobar("veneno: 0 turnos lanza excepción", true);
+        }
+
+        // Enemigos nuevos
+        Jugador blanco = new Jugador(Clase.CABALLERO);
+        blanco.cambiarOro(10);
+        Goblin goblin = new Goblin();
+        goblin.atacar(blanco);
+        comprobar("goblin: pega (4-1) y roba 3 de oro", blanco.getVida() == 42 && blanco.getOro() == 7);
+        Jugador pobre = new Jugador(Clase.CABALLERO);
+        goblin.atacar(pobre);
+        comprobar("goblin: sin oro no roba (el oro no baja de 0)", pobre.getOro() == 0);
+        Jugador picado = new Jugador(Clase.CABALLERO);
+        new Arana().atacar(picado);
+        comprobar("araña: la primera mordida envenena", picado.estaEnvenenado());
+        Golem golem = new Golem();
+        Jugador piedra = new Jugador(Clase.CABALLERO);
+        golem.atacar(piedra);
+        comprobar("golem: la primera acción solo se prepara", piedra.getVida() == 45);
+        golem.atacar(piedra);
+        comprobar("golem: la segunda pega doble (12-1)", piedra.getVida() == 34);
+        Espectro espectro = new Espectro();
+        espectro.recibirDanio(6);
+        Jugador helado = new Jugador(Clase.CABALLERO);
+        espectro.atacar(helado);
+        comprobar("espectro: pega (5-1) y se cura la mitad (2)", helado.getVida() == 41 && espectro.getVida() == 8);
+        comprobar("fábrica: tipos por piso 3/4/6/7",
+                FabricaEnemigos.tiposDisponibles(1) == 3 && FabricaEnemigos.tiposDisponibles(2) == 4
+                        && FabricaEnemigos.tiposDisponibles(3) == 6 && FabricaEnemigos.tiposDisponibles(5) == 7);
+        int distintos = 0;
+        String nombresVistos = "";
+        Random azar = new Random(11);
+        for (int i = 0; i < 300; i++) {
+            String nombre = FabricaEnemigos.crearAleatorio(5, azar).getNombre();
+            if (!nombresVistos.contains("|" + nombre + "|")) {
+                nombresVistos = nombresVistos + "|" + nombre + "|";
+                distintos++;
+            }
+        }
+        comprobar("fábrica: en el piso 5 aparecen los 7 tipos", distintos == 7);
+        comprobar("fábrica: crearPorNombre de los nuevos", FabricaEnemigos.crearPorNombre("GOBLIN", 0).getNombre().equals("Goblin")
+                && FabricaEnemigos.crearPorNombre("ARANA", 0).getNombre().equals("Araña")
+                && FabricaEnemigos.crearPorNombre("GOLEM", 0).getNombre().equals("Golem")
+                && FabricaEnemigos.crearPorNombre("ESPECTRO", 0).getNombre().equals("Espectro"));
+
+        // Guardia
+        Jugador g = new Jugador(Clase.CABALLERO);
+        g.setGuardia(true);
+        comprobar("guardia: el golpe (10) vale la mitad: 5 - 1 de defensa = 4", g.recibirDanio(10) == 4 && g.estaEnGuardia());
+        g.prepararCombate();
+        comprobar("prepararCombate: quita la guardia y llena la energía", !g.estaEnGuardia() && g.getEnergia() == g.getEnergiaMaxima());
+
+        // Combate: defender, huir, energía y veneno
+        Jugador d = new Jugador(Clase.CABALLERO);
+        Combate cd = nuevoCombate(d, new Esqueleto(), false);
+        d.gastarEnergia(8);
+        comprobar("defender: se puede en la elección", cd.defender() && cd.getEstado() == Combate.RESULTADO);
+        comprobar("defender: recupera 4 de energía (4 -> 8) y activa la guardia", d.getEnergia() == 8 && d.estaEnGuardia());
+        cd.continuar();
+        cd.continuar();
+        comprobar("defender: el esqueleto pega la mitad (5/2=2, menos 1 de defensa = 1)", d.getVida() == 44);
+        cd.continuar();
+        comprobar("defender: al empezar la ronda nueva la guardia termina", !d.estaEnGuardia() && cd.getRondas() == 2);
+        comprobar("defender: fuera de la elección no se puede", !nuevoCombate(new Jugador(), new Lobo(), false).defender() == false);
+
+        Combate ch = nuevoCombate(new Jugador(), new Esqueleto(), false);
+        comprobar("huir: probabilidad = 40 + 5*Destreza = 55%", ch.getProbabilidadDeHuir() == 55);
+        comprobar("huir: con suerte escapa y el combate termina", ch.huir() && ch.getEstado() == Combate.HUIDA && ch.haTerminado());
+        Combate ch2 = new Combate(new Jugador(), new Esqueleto(), false, 0, new AzarFijo(99));
+        comprobar("huir: si falla se pierde el turno", ch2.huir() && ch2.getEstado() == Combate.RESULTADO
+                && ch2.getMensaje().contains("no logras huir"));
+        Combate ch3 = nuevoCombate(new Jugador(), new ReyOscuro(), true);
+        comprobar("huir: del jefe no se puede y no se pierde el turno", !ch3.huir() && ch3.getEstado() == Combate.ELECCION);
+
+        Jugador cansado = new Jugador(Clase.CABALLERO);
+        Combate cc = nuevoCombate(cansado, new Esqueleto(), false);
+        cansado.gastarEnergia(10);
+        comprobar("energía: sin energía no se puede usar la espada", !cc.elegirArma() && cc.getMensaje().contains("energía")
+                && cc.getEstado() == Combate.ELECCION);
+        comprobar("energía: con 2 sí alcanzan los puños", cc.elegirPunos() && cansado.getEnergia() == 0);
+
+        Jugador pv = new Jugador(Clase.CABALLERO);
+        Combate cv = nuevoCombate(pv, new Golem(), false);
+        pv.envenenar(2, 3);
+        cv.defender();
+        comprobar("veneno del jugador: se cobra al terminar su turno", pv.getVida() == 42 && cv.getMensaje().contains("veneno"));
+
+        Jugador atacante = new Jugador(Clase.LADRON);
+        Enemigo envenenado = new Golem();
+        Combate cw = nuevoCombate(atacante, envenenado, false);
+        cw.elegirHabilidad(0);
+        cw.getBarra().setPosicion(300);
+        cw.pulsar();
+        comprobar("veneno del enemigo: queda envenenado tras la daga crítica", envenenado.estaEnvenenado());
+        cw.continuar();
+        int vidaAntesDelEnemigo = envenenado.getVida();
+        cw.continuar();
+        comprobar("veneno del enemigo: se cobra al terminar su turno", envenenado.getVida() < vidaAntesDelEnemigo
+                && cw.getMensaje().contains("veneno"));
+
+        // Minijuegos
+        Jugador mj = new Jugador(Clase.DRUIDA);
+        Combate cr = new Combate(mj, new Golem(), false, 0, new AzarFijo(60));
+        cr.elegirArma();
+        comprobar("minijuego: tirada 60 = ráfaga", cr.getEstado() == Combate.APUNTANDO && cr.getRafaga() != null
+                && cr.getBarra() == null && cr.getMinijuego().getTipo() == Minijuego.TIPO_RAFAGA);
+        Combate ca = new Combate(new Jugador(Clase.DRUIDA), new Golem(), false, 0, new AzarFijo(90));
+        ca.elegirArma();
+        comprobar("minijuego: tirada 90 = anillo", ca.getAnillo() != null && ca.getMinijuego().getTipo() == Minijuego.TIPO_ANILLO);
+        Combate cb = nuevoCombate(new Jugador(Clase.DRUIDA), new Golem(), false);
+        cb.elegirArma();
+        comprobar("minijuego: tirada 0 = barra", cb.getBarra() != null && cb.getMinijuego().getTipo() == Minijuego.TIPO_BARRA);
+
+        // Ráfaga
+        MinijuegoRafaga rafaga = new MinijuegoRafaga(3, 1.0, 0);
+        comprobar("ráfaga: objetivos nivel 0 (normal 6, crítico 12)", rafaga.getObjetivoNormal() == 6 && rafaga.getObjetivoCritico() == 12);
+        for (int i = 0; i < 6; i++) {
+            rafaga.pulsar();
+        }
+        comprobar("ráfaga: cuenta los golpes", rafaga.getGolpes() == 6 && !rafaga.estaTerminado());
+        rafaga.actualizar(MinijuegoRafaga.DURACION + 0.1);
+        comprobar("ráfaga: al acabarse el tiempo 6 golpes = NORMAL", rafaga.estaTerminado() && rafaga.getResultado() == Calidad.NORMAL);
+        rafaga.pulsar();
+        comprobar("ráfaga: terminada no suma más golpes", rafaga.getGolpes() == 6);
+        MinijuegoRafaga critica = new MinijuegoRafaga(3, 1.0, 0);
+        for (int i = 0; i < 12; i++) {
+            critica.pulsar();
+        }
+        comprobar("ráfaga: llegar al objetivo crítico termina enseguida en CRITICO",
+                critica.estaTerminado() && critica.getResultado() == Calidad.CRITICO);
+        MinijuegoRafaga floja = new MinijuegoRafaga(3, 1.0, 0);
+        floja.pulsar();
+        floja.actualizar(3);
+        comprobar("ráfaga: pocos golpes = FALLO", floja.getResultado() == Calidad.FALLO);
+        MinijuegoRafaga dura = new MinijuegoRafaga(3, 1.0, 10);
+        comprobar("ráfaga: con nivel 10 hay que machacar más", dura.getObjetivoCritico() > rafaga.getObjetivoCritico()
+                && dura.getObjetivoNormal() > rafaga.getObjetivoNormal());
+        comprobar("ráfaga: el tiempo restante baja", new MinijuegoRafaga(3, 1.0, 0).getTiempoRestante() == MinijuegoRafaga.DURACION);
+
+        // Anillo
+        MinijuegoAnillo anillo = new MinijuegoAnillo(12, 0.97, 1.0, 0);
+        comprobar("anillo: empieza en el radio inicial", anillo.getRadio() == MinijuegoAnillo.RADIO_INICIAL);
+        comprobar("anillo: sobre la marca es crítico", anillo.calidadConRadio(MinijuegoAnillo.RADIO_OBJETIVO) == Calidad.CRITICO);
+        comprobar("anillo: cerca de la marca es normal",
+                anillo.calidadConRadio(MinijuegoAnillo.RADIO_OBJETIVO + anillo.getToleranciaNormal() - 1) == Calidad.NORMAL);
+        comprobar("anillo: lejos de la marca es fallo", anillo.calidadConRadio(120) == Calidad.FALLO);
+        anillo.actualizar(anillo.getDuracion() / 2);
+        comprobar("anillo: a mitad de tiempo el radio es la mitad", Math.abs(anillo.getRadio() - MinijuegoAnillo.RADIO_INICIAL / 2) < 0.001);
+        anillo.actualizar(anillo.getDuracion());
+        comprobar("anillo: si pasa de largo la marca es FALLO automático", anillo.estaTerminado() && anillo.getResultado() == Calidad.FALLO);
+        MinijuegoAnillo justo = new MinijuegoAnillo(12, 0.97, 1.0, 0);
+        double enMarca = (MinijuegoAnillo.RADIO_INICIAL - MinijuegoAnillo.RADIO_OBJETIVO) / MinijuegoAnillo.RADIO_INICIAL * justo.getDuracion();
+        justo.actualizar(enMarca);
+        justo.pulsar();
+        comprobar("anillo: apretar justo cuando toca la marca da CRITICO", justo.getResultado() == Calidad.CRITICO);
+        MinijuegoAnillo rapido = new MinijuegoAnillo(12, 0.97, 1.0, 10);
+        comprobar("anillo: con nivel 10 es más rápido y la zona más chica",
+                rapido.getDuracion() < anillo.getDuracion() && rapido.getToleranciaCritica() < anillo.getToleranciaCritica());
+        try {
+            new MinijuegoAnillo(0, 1.0, 2.0, 0);
+            comprobar("anillo: dificultad 2 debe fallar", false);
+        } catch (IllegalArgumentException ex) {
+            comprobar("anillo: dificultad 2 lanza excepción", true);
+        }
+
+        // Dificultad creciente en la barra
+        BarraPrecision b0 = new BarraPrecision(new Jugador(), 1.0, 0);
+        BarraPrecision b8 = new BarraPrecision(new Jugador(), 1.0, 8);
+        comprobar("dificultad: con más nivel el cursor va más rápido", b8.getVelocidad() > b0.getVelocidad());
+        comprobar("dificultad: con más nivel la zona crítica es más chica", b8.getAnchoCritico() < b0.getAnchoCritico());
+        comprobar("dificultad: con más nivel la zona normal es más chica", b8.getAnchoNormal() < b0.getAnchoNormal());
+        BarraPrecision bTope = new BarraPrecision(new Jugador(), 1.0, 500);
+        BarraPrecision bMax = new BarraPrecision(new Jugador(), 1.0, Dificultad.NIVEL_MAXIMO);
+        comprobar("dificultad: el nivel tiene tope (siempre es posible)", bTope.getVelocidad() == bMax.getVelocidad());
+        comprobar("dificultad: factores en nivel 0 y máximo", Dificultad.factorVelocidad(0) == 1.0
+                && Math.abs(Dificultad.factorVelocidad(12) - 1.72) < 0.001 && Math.abs(Dificultad.factorZona(12) - 0.64) < 0.001);
+        comprobar("dificultad: nivel negativo se trata como 0", Dificultad.limitarNivel(-4) == 0);
+        Combate conNivel = new Combate(new Jugador(), new Golem(), false, 8, new AzarFijo(0));
+        conNivel.elegirArma();
+        comprobar("dificultad: el combate usa el nivel (su barra es tan rápida como la de nivel 8)", conNivel.getNivel() == 8
+                && conNivel.getBarra() != null && conNivel.getBarra().getVelocidad() > b0.getVelocidad());
+
+        // Los vecinos del mapa están ordenados de arriba hacia abajo (la flecha "arriba" sube de verdad)
+        boolean ordenados = true;
+        for (int semilla = 0; semilla < 40; semilla++) {
+            Partida p = Partida.nueva(semilla, new GestorArchivos("datos").cargarEventos(), Clase.DRUIDA);
+            for (int paso = 0; paso < 6 && !p.getAdyacentes().estaVacia(); paso++) {
+                ListaEnlazada<Integer> v = p.getAdyacentesOrdenados();
+                if (v.tamanio() != p.getAdyacentes().tamanio()) {
+                    ordenados = false;
+                }
+                for (int i = 1; i < v.tamanio(); i++) {
+                    if (p.getMapa().getNodo(v.obtener(i - 1)).getY() > p.getMapa().getNodo(v.obtener(i)).getY()) {
+                        ordenados = false;
+                    }
+                }
+                p.moverA(v.obtener(0));
+            }
+        }
+        comprobar("mapa: getAdyacentesOrdenados va de arriba hacia abajo (40 mapas)", ordenados);
+    }
+
+    // Opciones y ventana
+    private static void pruebasOpciones() {
+        Opciones o = new Opciones();
+        comprobar("opciones: valores por defecto 1024x640, brillo 100%, texto normal",
+                o.getAncho() == 1024 && o.getAlto() == 640 && o.getBrilloPorcentaje() == 100 && o.getEscalaTexto() == 1.0);
+        o.cambiarResolucion(1);
+        comprobar("opciones: resolución 1280x800", o.getAncho() == 1280 && o.getAlto() == 800 && o.getNombreResolucion().equals("1280 x 800"));
+        o.cambiarResolucion(1);
+        o.cambiarResolucion(1);
+        comprobar("opciones: la resolución se detiene en el último valor (1536x960)", o.getResolucion() == 2 && o.getAncho() == 1536 && o.getAlto() == 960);
+        o.cambiarResolucion(-5);
+        comprobar("opciones: y en el primero", o.getResolucion() == 0);
+        o.cambiarBrillo(-2);
+        comprobar("opciones: brillo mínimo 70%", o.getBrilloPorcentaje() == 70);
+        o.cambiarBrillo(10);
+        comprobar("opciones: brillo máximo 115%", o.getBrilloPorcentaje() == 115);
+        o.cambiarTexto(1);
+        comprobar("opciones: texto grande", o.getEscalaTexto() == 1.15 && o.getNombreTexto().equals("Grande"));
+        o.cambiarTexto(-5);
+        comprobar("opciones: texto pequeño", o.getEscalaTexto() == 0.9 && o.getNombreTexto().equals("Pequeño"));
+        try {
+            o.setBrillo(9);
+            comprobar("opciones: brillo fuera de rango debe fallar", false);
+        } catch (IllegalArgumentException ex) {
+            comprobar("opciones: brillo fuera de rango lanza excepción", true);
+        }
+
+        // Persistencia
+        File carpeta = carpetaTemporal("opciones");
+        GestorArchivos gestor = new GestorArchivos(carpeta.getPath());
+        Opciones sin = gestor.cargarOpciones();
+        comprobar("opciones: sin archivo se usan las de por defecto", sin.getResolucion() == 0 && sin.getBrillo() == 2 && sin.getTexto() == 1);
+        Opciones elegidas = new Opciones();
+        elegidas.setResolucion(2);
+        elegidas.setBrillo(0);
+        elegidas.setTexto(2);
+        comprobar("opciones: guardar devuelve true", gestor.guardarOpciones(elegidas));
+        Opciones leidas = gestor.cargarOpciones();
+        comprobar("opciones: se leen igual que se guardaron", leidas.getResolucion() == 2 && leidas.getBrillo() == 0 && leidas.getTexto() == 2);
+        escribirArchivo(gestor.rutaOpciones(), "RESOLUCION=abc\nBRILLO=77\nTEXTO=0\n");
+        Opciones rotas = gestor.cargarOpciones();
+        comprobar("opciones: los valores malos vuelven al de por defecto y los buenos se conservan",
+                rotas.getResolucion() == 0 && rotas.getBrillo() == 2 && rotas.getTexto() == 0);
+
+        // Escalado del mouse
+        Escalado e = new Escalado(1024, 640);
+        comprobar("escalado: sin cambios, 1 a 1", e.getFactorX() == 1.0 && e.aLogicoX(500) == 500);
+        e.setTamanioReal(1536, 960);
+        comprobar("escalado: en 1536x960 el factor es 1.5", e.getFactorX() == 1.5 && e.getFactorY() == 1.5);
+        comprobar("escalado: el mouse en (1536, 960) es la esquina lógica (1024, 640)", e.aLogicoX(1536) == 1024 && e.aLogicoY(960) == 640);
+        comprobar("escalado: el centro de la ventana es el centro del juego", e.aLogicoX(768) == 512 && e.aLogicoY(480) == 320);
+        try {
+            e.setTamanioReal(0, 100);
+            comprobar("escalado: tamaño 0 debe fallar", false);
+        } catch (IllegalArgumentException ex) {
+            comprobar("escalado: tamaño 0 lanza excepción", true);
+        }
+
+        // Pantallas (con una carpeta nueva, sin opciones.txt ni guardado.txt)
+        File carpetaPantalla = carpetaTemporal("opciones-pantalla");
+        Recursos recursos = new Recursos(carpetaPantalla.getPath(), "assets");
+        Motor motor = new Motor(1024, 640);
+        motor.iniciar(new EscenaMenu(recursos));
+        motor.simular(0.1);
+        pulsar(motor, KeyEvent.VK_DOWN);
+        pulsar(motor, KeyEvent.VK_DOWN);
+        pulsar(motor, KeyEvent.VK_ENTER);
+        motor.simular(0.1);
+        comprobar("opciones (pantalla): la tercera fila del menú abre las opciones", nombreEscena(motor).equals("EscenaOpciones"));
+        motor.capturar();
+        pulsar(motor, KeyEvent.VK_RIGHT);
+        comprobar("opciones (pantalla): → sube la resolución", recursos.getOpciones().getResolucion() == 1);
+        pulsar(motor, KeyEvent.VK_DOWN);
+        pulsar(motor, KeyEvent.VK_LEFT);
+        comprobar("opciones (pantalla): ↓ ← baja el brillo", recursos.getOpciones().getBrillo() == 1);
+        pulsar(motor, KeyEvent.VK_DOWN);
+        pulsar(motor, KeyEvent.VK_RIGHT);
+        comprobar("opciones (pantalla): el texto grande cambia la escala global", recursos.getOpciones().getTexto() == 2
+                && juego.graficos.TextoPixel.getEscala() == 1.15);
+        motor.capturar();
+        comprobar("opciones (pantalla): se guardó en opciones.txt", new GestorArchivos(carpetaPantalla.getPath()).cargarOpciones().getTexto() == 2);
+        pulsar(motor, KeyEvent.VK_ESCAPE);
+        motor.simular(0.1);
+        comprobar("opciones (pantalla): ESC vuelve al menú", nombreEscena(motor).equals("EscenaMenu"));
+        juego.graficos.TextoPixel.setEscala(1.0);
+
+        // Elección de clase
+        Recursos normal = new Recursos("datos", "assets");
+        normal.getArchivos().borrarGuardado();
+        motor = new Motor(1024, 640);
+        EscenaClases clases = new EscenaClases(normal);
+        motor.iniciar(clases);
+        motor.simular(0.1);
+        motor.capturar();
+        pulsar(motor, KeyEvent.VK_RIGHT);
+        pulsar(motor, KeyEvent.VK_RIGHT);
+        comprobar("clases (pantalla): → elige la tercera clase (druida)", clases.getSeleccion() == 2);
+        pulsar(motor, KeyEvent.VK_LEFT);
+        pulsar(motor, KeyEvent.VK_LEFT);
+        pulsar(motor, KeyEvent.VK_LEFT);
+        comprobar("clases (pantalla): ← da la vuelta (ladrón)", clases.getSeleccion() == 3);
+        motor.capturar();
+        pulsar(motor, KeyEvent.VK_2);
+        comprobar("clases (pantalla): la tecla 2 elige el mago", clases.getSeleccion() == 1);
+        pulsar(motor, KeyEvent.VK_ENTER);
+        motor.simular(0.1);
+        comprobar("clases (pantalla): ENTER empieza la aventura en el mapa", nombreEscena(motor).equals("EscenaMapa"));
+        normal.getArchivos().borrarGuardado();
     }
 
     // Mapa (grafo)
@@ -704,7 +1152,7 @@ public class PruebaJuego {
     // Partida
     private static void pruebasPartida() {
         ListaEnlazada<EventoNarrativo> eventos = new GestorArchivos("datos").cargarEventos();
-        Partida p = Partida.nueva(42, eventos);
+        Partida p = Partida.nueva(42, eventos, Clase.DRUIDA);
         comprobar("partida: empieza en el inicio", p.getNodoActual() == p.getMapa().getIdInicio());
         comprobar("partida: el inicio está visitado", p.getNodoActualCompleto().estaVisitado());
         comprobar("partida: la ruta tiene 1 nodo", p.getRuta().tamanio() == 1);
@@ -755,11 +1203,11 @@ public class PruebaJuego {
         comprobar("cofre: el héroe aprendió curación", p.getJugador().conoceHabilidad("CURACION"));
         p.getJugador().aprenderHabilidad(new HabilidadGolpePotente());
         p.getJugador().aprenderHabilidad(new HabilidadEscape());
-        comprobar("cofre: con todas las habilidades da Inteligencia",
+        comprobar("cofre: con el repertorio lleno da Inteligencia",
                 p.crearEventoCofre().getOpcion(0).getEfecto(0).getTipo() == EfectoEvento.Tipo.INTELIGENCIA);
 
         // Crecimiento
-        Partida q = Partida.nueva(1, eventos);
+        Partida q = Partida.nueva(1, eventos, Clase.DRUIDA);
         comprobar("crecimiento: el primer derrotado no mejora nada", q.sumarDerrotado() == null);
         String m1 = q.sumarDerrotado();
         comprobar("crecimiento: el segundo da +1 Fuerza", m1 != null && m1.contains("Fuerza") && q.getJugador().getFuerza() == 4);
@@ -794,7 +1242,7 @@ public class PruebaJuego {
         comprobar("archivos: sin guardado, existeGuardado es false", !gestor.existeGuardado());
         comprobar("archivos: cargar sin archivo devuelve null", gestor.cargar(eventos) == null);
 
-        Partida p = Partida.nueva(2024, eventos);
+        Partida p = Partida.nueva(2024, eventos, Clase.LADRON);
         p.getJugador().aprenderHabilidad(new HabilidadCuracion());
         p.getJugador().mejorarAtributo(Jugador.FUERZA, 2);
         p.getJugador().cambiarOro(37);
@@ -816,7 +1264,8 @@ public class PruebaJuego {
             comprobar("archivos: mismos atributos", a.getFuerza() == b.getFuerza() && a.getDestreza() == b.getDestreza()
                     && a.getInteligencia() == b.getInteligencia());
             comprobar("archivos: misma vida, maná y oro", a.getVida() == b.getVida() && a.getMana() == b.getMana() && a.getOro() == b.getOro());
-            comprobar("archivos: mismas habilidades", b.cantidadHabilidades() == 2 && b.conoceHabilidad("ATAQUE") && b.conoceHabilidad("CURACION"));
+            comprobar("archivos: mismos hechizos", b.cantidadHabilidades() == 2 && b.conoceHabilidad("VENENO") && b.conoceHabilidad("CURACION"));
+            comprobar("archivos: misma clase (ladrón)", b.getClase() == Clase.LADRON);
             comprobar("archivos: mismo nodo actual", c.getNodoActual() == p.getNodoActual());
             comprobar("archivos: misma ruta", c.getRuta().tamanio() == p.getRuta().tamanio());
             comprobar("archivos: nodos visitados marcados en el grafo cargado", c.getMapa().getNodo(c.getNodoActual()).estaVisitado());
@@ -835,8 +1284,10 @@ public class PruebaJuego {
         comprobar("danado: atributo imposible", cargaConLinea(gestor, eventos, "FUERZA=", "FUERZA=0") == null);
         comprobar("danado: vida cero", cargaConLinea(gestor, eventos, "VIDA=", "VIDA=0") == null);
         comprobar("danado: versión desconocida", cargaConLinea(gestor, eventos, "VERSION=", "VERSION=9") == null);
-        comprobar("danado: habilidad inventada", cargaConLinea(gestor, eventos, "HABILIDADES=", "HABILIDADES=ATAQUE,FUEGO") == null);
-        comprobar("danado: sin la habilidad ATAQUE", cargaConLinea(gestor, eventos, "HABILIDADES=", "HABILIDADES=CURACION") == null);
+        comprobar("danado: habilidad inventada", cargaConLinea(gestor, eventos, "HABILIDADES=", "HABILIDADES=VENENO,FUEGO") == null);
+        comprobar("danado: clase inexistente", cargaConLinea(gestor, eventos, "CLASE=", "CLASE=BARBARO") == null);
+        comprobar("danado: sin clase", cargaConLinea(gestor, eventos, "CLASE=", "OTRA=1") == null);
+        comprobar("danado: más de 4 hechizos", cargaConLinea(gestor, eventos, "HABILIDADES=", "HABILIDADES=VENENO,CURACION,GOLPE,ESCAPE,FURIA") == null);
         comprobar("danado: sin habilidades", cargaConLinea(gestor, eventos, "HABILIDADES=", "HABILIDADES=") == null);
         comprobar("danado: ruta que salta nodos", cargaConLinea(gestor, eventos, "RUTA=", "RUTA=0,99") == null);
         comprobar("danado: ruta que no empieza en el inicio", cargaConLinea(gestor, eventos, "RUTA=", "RUTA=5") == null);
@@ -859,7 +1310,7 @@ public class PruebaJuego {
 
     // Guarda una partida válida, cambia una línea y trata de cargarla
     private static Partida cargaConLinea(GestorArchivos gestor, ListaEnlazada<EventoNarrativo> eventos, String prefijo, String nueva) {
-        Partida p = Partida.nueva(2024, eventos);
+        Partida p = Partida.nueva(2024, eventos, Clase.CABALLERO);
         p.moverA(p.getAdyacentes().obtener(0));
         gestor.guardar(p);
         ListaEnlazada<String> lineas = gestor.leerLineas(gestor.rutaGuardado());
@@ -896,7 +1347,7 @@ public class PruebaJuego {
             }
         }
         comprobar("sprites: los " + CatalogoSprites.CANTIDAD + " sprites miden 16x16", todosBien);
-        comprobar("sprites: existe / no existe", CatalogoSprites.existe("jugador") && !CatalogoSprites.existe("dragon"));
+        comprobar("sprites: existe / no existe", CatalogoSprites.existe("caballero") && !CatalogoSprites.existe("dragon"));
         try {
             new Sprite("abc/de");
             comprobar("sprite: filas desparejas debe fallar", false);
@@ -917,11 +1368,11 @@ public class PruebaJuego {
         // Respaldo: carpeta sin imágenes
         File carpeta = carpetaTemporal("assets");
         GestorSprites gestor = new GestorSprites(carpeta.getPath());
-        comprobar("sprites: sin .png no hay archivo", !gestor.tieneArchivo("jugador"));
-        BufferedImage respaldo = gestor.obtener("jugador", 4);
+        comprobar("sprites: sin .png no hay archivo", !gestor.tieneArchivo("caballero"));
+        BufferedImage respaldo = gestor.obtener("caballero", 4);
         comprobar("sprites: sin .png se usa el dibujo procedural (64x64)", respaldo.getWidth() == 64 && respaldo.getHeight() == 64);
-        comprobar("sprites: el caché devuelve la misma imagen", gestor.obtener("jugador", 4) == respaldo);
-        comprobar("sprites: otra escala es otra imagen", gestor.obtener("jugador", 2).getWidth() == 32);
+        comprobar("sprites: el caché devuelve la misma imagen", gestor.obtener("caballero", 4) == respaldo);
+        comprobar("sprites: otra escala es otra imagen", gestor.obtener("caballero", 2).getWidth() == 32);
 
         // .png propio: se usa en lugar del dibujo
         try {
@@ -949,6 +1400,7 @@ public class PruebaJuego {
     // Pantallas, manejadas con el motor sin ventana
     private static void pruebasPantallas() {
         Recursos recursos = new Recursos("datos", "assets");
+        recursos.getArchivos().borrarGuardado();
         comprobar("recursos: se cargaron los eventos", recursos.getEventos().tamanio() >= 9);
 
         // Menú -> mapa
@@ -961,11 +1413,15 @@ public class PruebaJuego {
         motor.simular(0.1);
         motor.getEntrada().soltarTecla(KeyEvent.VK_ENTER);
         motor.simular(0.1);
-        comprobar("pantalla: ENTER en 'Nueva partida' abre el mapa", nombreEscena(motor).equals("EscenaMapa"));
+        comprobar("pantalla: ENTER en 'Nueva partida' abre la elección de clase", nombreEscena(motor).equals("EscenaClases"));
+        motor.capturar();
+        pulsar(motor, KeyEvent.VK_ENTER);
+        motor.simular(0.1);
+        comprobar("pantalla: ENTER sobre la clase abre el mapa", nombreEscena(motor).equals("EscenaMapa"));
         motor.capturar();
 
         // Mapa: elegir y avanzar
-        Partida p = Partida.nueva(555, recursos.getEventos());
+        Partida p = Partida.nueva(555, recursos.getEventos(), Clase.DRUIDA);
         EscenaMapa mapa = new EscenaMapa(recursos, p, false);
         motor = new Motor(1024, 640);
         motor.iniciar(mapa);
@@ -986,16 +1442,19 @@ public class PruebaJuego {
         motor.capturar();
 
         // Combate por la interfaz
-        Partida pc = Partida.nueva(9, recursos.getEventos());
+        Partida pc = Partida.nueva(9, recursos.getEventos(), Clase.CABALLERO);
         Enemigo debil = new Esqueleto();
-        EscenaCombate escCombate = new EscenaCombate(recursos, pc, debil, false);
+        EscenaCombate escCombate = new EscenaCombate(recursos, pc, debil, false, new AzarFijo(0));
         motor = new Motor(1024, 640);
         motor.iniciar(escCombate);
         motor.simular(0.2);
         motor.capturar();
         comprobar("combate (pantalla): empieza eligiendo", escCombate.getCombate().getEstado() == Combate.ELECCION);
         pulsar(motor, KeyEvent.VK_1);
-        comprobar("combate (pantalla): la tecla 1 inicia la barra", escCombate.getCombate().getEstado() == Combate.APUNTANDO);
+        comprobar("combate (pantalla): la tecla 1 abre el submenú Luchar", escCombate.getCombate().getEstado() == Combate.ELECCION);
+        motor.capturar();
+        pulsar(motor, KeyEvent.VK_1);
+        comprobar("combate (pantalla): la tecla 1 en Luchar usa el arma e inicia la barra", escCombate.getCombate().getEstado() == Combate.APUNTANDO);
         motor.simular(0.3);
         motor.capturar();
         pulsar(motor, KeyEvent.VK_SPACE);
@@ -1007,7 +1466,7 @@ public class PruebaJuego {
         comprobar("combate (pantalla): el enemigo actúa solo tras una espera", escCombate.getCombate().getRondas() >= 1);
 
         // Evento por la interfaz
-        Partida pe = Partida.nueva(3, recursos.getEventos());
+        Partida pe = Partida.nueva(3, recursos.getEventos(), Clase.MAGO);
         EscenaEvento escEvento = new EscenaEvento(recursos, pe, pe.crearEventoCofre(), true);
         motor = new Motor(1024, 640);
         motor.iniciar(escEvento);
@@ -1030,6 +1489,7 @@ public class PruebaJuego {
         pulsar(motor, KeyEvent.VK_ENTER);
         motor.simular(0.1);
         comprobar("fin: ENTER vuelve al menú", nombreEscena(motor).equals("EscenaMenu"));
+        recursos.getArchivos().borrarGuardado();
     }
 
     private static void pulsar(Motor motor, int tecla) {
@@ -1047,27 +1507,34 @@ public class PruebaJuego {
     // Sirve para comprobar que nunca se traba y para ver qué tan equilibrado está el juego.
     private static void pruebasAventuraCompleta() {
         ListaEnlazada<EventoNarrativo> eventos = new GestorArchivos("datos").cargarEventos();
-        int victorias = 0;
-        int partidas = 60;
+        int partidasPorClase = 40;
+        int victoriasTotales = 0;
         boolean ningunaSeTraba = true;
-        for (int semilla = 0; semilla < partidas; semilla++) {
-            int resultado = jugarRobot(semilla, eventos);
-            if (resultado < 0) {
-                ningunaSeTraba = false;
+        String resumen = "";
+        for (int k = 0; k < Clase.CANTIDAD; k++) {
+            Clase clase = Clase.porOrden(k);
+            int victorias = 0;
+            for (int semilla = 0; semilla < partidasPorClase; semilla++) {
+                int resultado = jugarRobot(semilla, eventos, clase);
+                if (resultado < 0) {
+                    ningunaSeTraba = false;
+                }
+                if (resultado == 1) {
+                    victorias++;
+                }
             }
-            if (resultado == 1) {
-                victorias++;
-            }
+            victoriasTotales = victoriasTotales + victorias;
+            resumen = resumen + clase.getNombre() + " " + victorias + "/" + partidasPorClase + "  ";
         }
-        System.out.println("(el robot ganó " + victorias + " de " + partidas + " aventuras)");
+        System.out.println("(el robot ganó: " + resumen + ")");
         comprobar("aventura: todas las partidas terminan (sin trabarse)", ningunaSeTraba);
-        comprobar("aventura: el juego no es imposible (el robot gana alguna)", victorias > 0);
-        comprobar("aventura: el juego no es trivial (el robot no gana todas)", victorias < partidas);
+        comprobar("aventura: el juego no es imposible (el robot gana alguna)", victoriasTotales > 0);
+        comprobar("aventura: el juego no es trivial (el robot no gana todas)", victoriasTotales < partidasPorClase * Clase.CANTIDAD);
     }
 
     // Devuelve 1 si ganó, 0 si murió, -1 si algo se trabó
-    private static int jugarRobot(int semilla, ListaEnlazada<EventoNarrativo> eventos) {
-        Partida p = Partida.nueva(semilla, eventos);
+    private static int jugarRobot(int semilla, ListaEnlazada<EventoNarrativo> eventos, Clase clase) {
+        Partida p = Partida.nueva(semilla, eventos, clase);
         Jugador j = p.getJugador();
         java.util.Random azar = new java.util.Random(semilla);
         for (int paso = 0; paso < 40; paso++) {
@@ -1119,25 +1586,17 @@ public class PruebaJuego {
         return -1;
     }
 
-    // Pelea automática: cura si está bajo, usa el golpe potente si puede, si no ataca.
-    // El robot frena la barra con una puntería razonable (a veces falla).
+    // Pelea automática: cura si está bajo, usa el mejor hechizo que pueda pagar, si no el arma, si no los puños,
+    // y si no tiene energía se defiende. El robot juega los minijuegos con una puntería razonable (a veces falla).
     private static boolean peleaRobot(Partida p, Enemigo enemigo, boolean esJefe, java.util.Random azar) {
         Jugador j = p.getJugador();
-        Combate c = new Combate(j, enemigo, esJefe);
-        for (int pasos = 0; pasos < 400 && !c.haTerminado(); pasos++) {
+        Combate c = new Combate(j, enemigo, esJefe, p.getDerrotados(), azar);
+        for (int pasos = 0; pasos < 600 && !c.haTerminado(); pasos++) {
             int estado = c.getEstado();
             if (estado == Combate.ELECCION) {
-                int habilidad = 0;
-                if (j.getVida() < j.getVidaMaxima() / 2 && j.conoceHabilidad("CURACION") && j.puedePagar(4)) {
-                    habilidad = indiceDe(j, "CURACION");
-                } else if (j.conoceHabilidad("GOLPE") && j.puedePagar(5)) {
-                    habilidad = indiceDe(j, "GOLPE");
-                }
-                c.elegirHabilidad(habilidad);
+                elegirAccionRobot(c, j);
             } else if (estado == Combate.APUNTANDO) {
-                double error = (azar.nextDouble() - 0.5) * 2 * 130;
-                c.getBarra().setPosicion(Math.max(0, Math.min(600, 300 + error)));
-                c.detenerBarra();
+                jugarMinijuegoRobot(c, azar);
             } else {
                 c.continuar();
             }
@@ -1147,6 +1606,55 @@ public class PruebaJuego {
             return true;
         }
         return c.getEstado() == Combate.HUIDA;
+    }
+
+    private static void elegirAccionRobot(Combate c, Jugador j) {
+        if (j.getVida() < j.getVidaMaxima() / 2 && j.conoceHabilidad("CURACION") && j.puedePagar(4)) {
+            c.elegirHabilidad(indiceDe(j, "CURACION"));
+            return;
+        }
+        // El hechizo de ataque más caro que pueda pagar (se saltea la curación y el escape)
+        int mejor = -1;
+        int mejorCosto = -1;
+        for (int i = 0; i < j.cantidadHabilidades(); i++) {
+            Habilidad h = j.getHabilidad(i);
+            if (h.usaBarra() && j.puedePagar(h.getCostoMana()) && h.getCostoMana() > mejorCosto) {
+                mejor = i;
+                mejorCosto = h.getCostoMana();
+            }
+        }
+        if (mejor >= 0 && c.elegirHabilidad(mejor)) {
+            return;
+        }
+        if (j.puedePagarEnergia(j.getArma().getCostoEnergia()) && c.elegirArma()) {
+            return;
+        }
+        if (j.puedePagarEnergia(j.getPunos().getCostoEnergia()) && c.elegirPunos()) {
+            return;
+        }
+        c.defender();
+    }
+
+    private static void jugarMinijuegoRobot(Combate c, java.util.Random azar) {
+        Minijuego m = c.getMinijuego();
+        if (m.getTipo() == Minijuego.TIPO_BARRA) {
+            double error = (azar.nextDouble() - 0.5) * 2 * 130;
+            c.getBarra().setPosicion(Math.max(0, Math.min(600, 300 + error)));
+            c.pulsar();
+        } else if (m.getTipo() == Minijuego.TIPO_RAFAGA) {
+            int golpes = 4 + azar.nextInt(10);
+            for (int i = 0; i < golpes; i++) {
+                c.pulsar();
+            }
+            c.actualizar(MinijuegoRafaga.DURACION + 0.1);
+        } else {
+            MinijuegoAnillo a = c.getAnillo();
+            double exacto = (MinijuegoAnillo.RADIO_INICIAL - MinijuegoAnillo.RADIO_OBJETIVO) / MinijuegoAnillo.RADIO_INICIAL * a.getDuracion();
+            double error = (azar.nextDouble() - 0.5) * 0.3;
+            c.actualizar(Math.max(0, exacto * (1 + error)));
+            c.pulsar();
+            c.actualizar(a.getDuracion());
+        }
     }
 
     private static int indiceDe(Jugador j, String codigo) {

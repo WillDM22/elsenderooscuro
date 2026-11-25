@@ -11,6 +11,7 @@ public abstract class Enemigo {
     private int danio;
     private final int recompensaOro;
     private int acciones;
+    private final EstadoVeneno veneno = new EstadoVeneno();
 
     // Constructor
     protected Enemigo(String nombre, String sprite, int vidaMaxima, int danio, int recompensaOro) {
@@ -58,6 +59,22 @@ public abstract class Enemigo {
         int real = Math.min(vida, cantidad);
         vida = vida - real;
         return real;
+    }
+
+    // Veneno (lo aplica la Daga envenenada del héroe). Se cobra al terminar el turno del enemigo.
+    public void envenenar(int turnos, int danio) {
+        veneno.aplicar(turnos, danio);
+    }
+
+    // Devuelve el daño que hizo el veneno en este turno (0 si no estaba envenenado)
+    public int aplicarVeneno() {
+        int danio = veneno.pasarTurno();
+        vida = Math.max(0, vida - danio);
+        return danio;
+    }
+
+    public boolean estaEnvenenado() {
+        return veneno.estaActivo();
     }
 
     protected void curar(int cantidad) {

@@ -3,7 +3,8 @@
 #   EVENTO|título|relato
 #   OPCION|texto del botón|EFECTO:valor;EFECTO:valor|texto del resultado
 # Efectos posibles: VIDA, MANA, ORO, FUERZA, DESTREZA, INTELIGENCIA (con un número, puede ser negativo),
-#                   HABILIDAD (ATAQUE, CURACION, GOLPE o ESCAPE) y COMBATE (ESQUELETO, LOBO o BRUJO).
+#                   HABILIDAD (CURACION, GOLPE, ESCAPE, FURIA, SAVIA o VENENO; si el héroe ya tiene 4 hechizos no la aprende)
+#                   y COMBATE (ESQUELETO, LOBO, BRUJO, GOBLIN, ARANA, GOLEM o ESPECTRO).
 # Una opción con ORO negativo solo se puede elegir si el jugador tiene ese oro.
 # Las líneas que empiezan con # y las líneas vacías se ignoran.
 
@@ -61,3 +62,18 @@ EVENTO|El espejo roto|Un espejo de marco dorado cuelga de un árbol. Tu reflejo 
 OPCION|Mirar fijamente tu reflejo|DESTREZA:1;VIDA:-3|Tu reflejo sonríe y te enseña a esquivar. Un escalofrío te recorre.
 OPCION|Romper el espejo|ORO:8|Los fragmentos de marco dorado valen algo.
 OPCION|Cubrirlo con una tela|MANA:3|Sientes que la magia del lugar se calma.
+
+EVENTO|El túnel de telarañas|Una cueva baja está tapizada de hilos plateados. Algo grande se mueve en la oscuridad del fondo.
+OPCION|Cortar los hilos y avanzar|COMBATE:ARANA|Los hilos vibran y una araña enorme baja del techo.
+OPCION|Buscar entre los capullos|ORO:12;VIDA:-3|Entre los capullos hay monedas, pero una picadura te alcanza.
+OPCION|Rodear la cueva|MANA:3|Das un largo rodeo y el aire fresco te despeja.
+
+EVENTO|El ladrón de la encrucijada|Un hombrecillo verde se sienta sobre un cartel torcido. Cuenta monedas que no parecen suyas.
+OPCION|Pedirle el camino|ORO:-5;DESTREZA:1|Te cobra por la información, pero te enseña un atajo ágil.
+OPCION|Quitarle la bolsa|COMBATE:GOBLIN|El goblin chilla, saca una daga oxidada y se abalanza sobre ti.
+OPCION|Seguir de largo||Sientes sus ojos clavados en tu espalda hasta que el camino da la vuelta.
+
+EVENTO|La estatua que respira|Una estatua de piedra con el pecho cubierto de musgo parece subir y bajar muy despacio.
+OPCION|Empujarla|COMBATE:GOLEM|La estatua abre los ojos: un golem despierta de su siesta de siglos.
+OPCION|Dejar una ofrenda (8 oro)|ORO:-8;VIDA:12|El musgo se vuelve verde brillante y tus heridas se cierran.
+OPCION|Estudiar las runas|INTELIGENCIA:1;VIDA:-3|Las runas te queman los ojos, pero descifras algo.

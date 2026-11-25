@@ -55,7 +55,7 @@ public class EscenaFin extends Escena {
             Adornos.antorcha(g, recursos, ANCHO - 150, 330, tiempo, 2);
             TextoPixel.centrado(g, "¡VICTORIA!", ANCHO / 2.0, 110, 62, Paleta.ORO);
             TextoPixel.centrado(g, "El Rey Oscuro cae y el bosque vuelve a respirar.", ANCHO / 2.0, 154, 20, Paleta.PERGAMINO);
-            DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(CatalogoSprites.JUGADOR, 9),
+            DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(partida.getJugador().getClase().getSprite(), 9),
                     ANCHO / 2.0, 330 + Math.sin(tiempo * 2) * 6);
         } else {
             TextoPixel.centrado(g, "HAS CAÍDO", ANCHO / 2.0, 110, 62, new Color(220, 70, 70));

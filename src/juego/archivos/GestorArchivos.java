@@ -11,7 +11,9 @@ import java.io.OutputStreamWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import juego.entidades.CatalogoHabilidades;
+import juego.entidades.Clase;
 import juego.entidades.Jugador;
+import juego.opciones.Opciones;
 import juego.reglas.EfectoEvento;
 import juego.reglas.EventoNarrativo;
 import juego.reglas.MapaBosque;
@@ -23,13 +25,15 @@ import utilidades.Tokenizador;
 // Persistencia en archivos de texto plano (java.io):
 //   guardado.txt -> la partida (se escribe con PrintWriter y se lee con BufferedReader)
 //   eventos.txt  -> los eventos narrativos del juego (se leen con BufferedReader)
+//   opciones.txt -> resolución, brillo y tamaño del texto
 // Si un archivo falta o está dañado el juego NO se rompe: cargar() devuelve null y los eventos usan un respaldo.
 public class GestorArchivos {
 
     // Constantes
-    private static final String VERSION = "1";
+    private static final String VERSION = "2";
     private static final String NOMBRE_GUARDADO = "guardado.txt";
     private static final String NOMBRE_EVENTOS = "eventos.txt";
+    private static final String NOMBRE_OPCIONES = "opciones.txt";
 
     // Atributos
     private final String carpeta;
@@ -51,6 +55,10 @@ public class GestorArchivos {
         return carpeta + File.separator + NOMBRE_EVENTOS;
     }
 
+    public String rutaOpciones() {
+        return carpeta + File.separator + NOMBRE_OPCIONES;
+    }
+
     // Guardado
     public boolean existeGuardado() {
         return new File(rutaGuardado()).isFile();
@@ -68,6 +76,7 @@ public class GestorArchivos {
             Jugador j = partida.getJugador();
             salida.println("VERSION=" + VERSION);
             salida.println("SEMILLA=" + partida.getSemilla());
+            salida.println("CLASE=" + j.getClase().name());
             salida.println("FUERZA=" + j.getFuerza());
             salida.println("DESTREZA=" + j.getDestreza());
             salida.println("INTELIGENCIA=" + j.getInteligencia());
@@ -100,6 +109,10 @@ public class GestorArchivos {
                 return null;
             }
             long semilla = Long.parseLong(valorDe(lineas, "SEMILLA"));
+            Clase clase = Clase.porCodigo(valorDe(lineas, "CLASE"));
+            if (clase == null) {
+                return null;
+            }
             int fuerza = Integer.parseInt(valorDe(lineas, "FUERZA"));
             int destreza = Integer.parseInt(valorDe(lineas, "DESTREZA"));
             int inteligencia = Integer.parseInt(valorDe(lineas, "INTELIGENCIA"));
@@ -112,7 +125,7 @@ public class GestorArchivos {
                 return null;
             }
 
-            Jugador jugador = new Jugador(fuerza, destreza, inteligencia, vida, mana, oro);
+            Jugador jugador = new Jugador(clase, fuerza, destreza, inteligencia, vida, mana, oro);
             if (!cargarHabilidades(jugador, valorDe(lineas, "HABILIDADES"))) {
                 return null;
             }
@@ -127,6 +140,45 @@ public class GestorArchivos {
             // NullPointerException (falta una clave)... todo significa "archivo dañado".
             return null;
         }
+    }
+
+    // Opciones
+    // Escribe opciones.txt (una línea CLAVE=valor por opción). Devuelve false si no se pudo.
+    public boolean guardarOpciones(Opciones opciones) {
+        new File(carpeta).mkdirs();
+        try (PrintWriter salida = new PrintWriter(new OutputStreamWriter(new FileOutputStream(rutaOpciones()), "UTF-8"))) {
+            salida.println("RESOLUCION=" + opciones.getResolucion());
+            salida.println("BRILLO=" + opciones.getBrillo());
+            salida.println("TEXTO=" + opciones.getTexto());
+            return !salida.checkError();
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    // Lee opciones.txt. Si falta o tiene datos malos, cada opción dañada vuelve a su valor por defecto.
+    public Opciones cargarOpciones() {
+        Opciones opciones = new Opciones();
+        ListaEnlazada<String> lineas = leerLineas(rutaOpciones());
+        if (lineas == null) {
+            return opciones;
+        }
+        try {
+            opciones.setResolucion(Integer.parseInt(valorDe(lineas, "RESOLUCION")));
+        } catch (RuntimeException e) {
+            // valor ausente, no numérico o fuera de rango: se queda el de por defecto
+        }
+        try {
+            opciones.setBrillo(Integer.parseInt(valorDe(lineas, "BRILLO")));
+        } catch (RuntimeException e) {
+            // ídem
+        }
+        try {
+            opciones.setTexto(Integer.parseInt(valorDe(lineas, "TEXTO")));
+        } catch (RuntimeException e) {
+            // ídem
+        }
+        return opciones;
     }
 
     // Eventos
@@ -261,8 +313,8 @@ public class GestorArchivos {
                 return false;
             }
         }
-        // Todo héroe sabe atacar: un guardado sin ATAQUE fue modificado a mano
-        return jugador.conoceHabilidad("ATAQUE");
+        // Todo héroe empieza con un hechizo y nunca los pierde: un guardado sin ninguno fue modificado a mano
+        return jugador.cantidadHabilidades() >= 1;
     }
 
     // Arma la pila de la ruta y comprueba que sea un camino posible del grafo (empezando en el inicio)

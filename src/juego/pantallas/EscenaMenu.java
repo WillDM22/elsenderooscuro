@@ -13,14 +13,15 @@ import juego.reglas.Partida;
 import motor.Entrada;
 import motor.Escena;
 
-// Menú principal: Nueva partida / Continuar / Salir.
+// Menú principal: Nueva partida / Continuar / Opciones / Salir.
 public class EscenaMenu extends Escena {
 
     // Constantes
     private static final int NUEVA = 0;
     private static final int CONTINUAR = 1;
-    private static final int SALIR = 2;
-    private static final int OPCIONES = 3;
+    private static final int AJUSTES = 2;
+    private static final int SALIR = 3;
+    private static final int CANTIDAD = 4;
     private static final int ANCHO = 1024;
     private static final int ALTO = 640;
     private static final int X_MENU = 360;
@@ -56,14 +57,14 @@ public class EscenaMenu extends Escena {
         Entrada entrada = getEntrada();
 
         if (entrada.fuePresionada(KeyEvent.VK_UP) || entrada.fuePresionada(KeyEvent.VK_W)) {
-            seleccion = (seleccion + OPCIONES - 1) % OPCIONES;
+            seleccion = (seleccion + CANTIDAD - 1) % CANTIDAD;
         }
         if (entrada.fuePresionada(KeyEvent.VK_DOWN) || entrada.fuePresionada(KeyEvent.VK_S)) {
-            seleccion = (seleccion + 1) % OPCIONES;
+            seleccion = (seleccion + 1) % CANTIDAD;
         }
 
         // Mouse: pasar por encima selecciona, hacer click confirma
-        for (int i = 0; i < OPCIONES; i++) {
+        for (int i = 0; i < CANTIDAD; i++) {
             if (estaSobreOpcion(entrada, i)) {
                 if (entrada.getMouseX() != 0 || entrada.getMouseY() != 0) {
                     seleccion = i;
@@ -89,9 +90,7 @@ public class EscenaMenu extends Escena {
     private void confirmar() {
         GestorArchivos archivos = recursos.getArchivos();
         if (seleccion == NUEVA) {
-            long semilla = System.currentTimeMillis() % 100000;
-            Partida partida = Partida.nueva(semilla, recursos.getEventos());
-            getContexto().irA(new EscenaMapa(recursos, partida, false));
+            getContexto().irA(new EscenaClases(recursos));
         } else if (seleccion == CONTINUAR) {
             Partida partida = archivos.existeGuardado() ? archivos.cargar(recursos.getEventos()) : null;
             if (partida == null) {
@@ -100,6 +99,8 @@ public class EscenaMenu extends Escena {
             } else {
                 getContexto().irA(new EscenaMapa(recursos, partida, false));
             }
+        } else if (seleccion == AJUSTES) {
+            getContexto().irA(new EscenaOpciones(recursos, this));
         } else if (seleccion == SALIR) {
             getContexto().salir();
         }
@@ -121,13 +122,13 @@ public class EscenaMenu extends Escena {
 
         // Héroe flotando suavemente a la izquierda y calavera a la derecha
         double flota = Math.sin(tiempo * 2.2) * 6;
-        DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(CatalogoSprites.JUGADOR, 8), 190, 420 + flota);
+        DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(CatalogoSprites.CABALLERO, 8), 190, 420 + flota);
         DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(CatalogoSprites.REY, 8), ANCHO - 190, 420 - flota);
 
         // Opciones
-        DibujoMedieval.cuadroDialogo(g, X_MENU - 60, Y_MENU - 56, 420, 190);
+        DibujoMedieval.cuadroDialogo(g, X_MENU - 60, Y_MENU - 56, 420, 244);
         boolean hayGuardado = recursos.getArchivos().existeGuardado();
-        for (int i = 0; i < OPCIONES; i++) {
+        for (int i = 0; i < CANTIDAD; i++) {
             Color color = Paleta.HUESO;
             if (i == CONTINUAR && !hayGuardado) {
                 color = Paleta.PIEDRA;
@@ -151,6 +152,9 @@ public class EscenaMenu extends Escena {
         }
         if (i == CONTINUAR) {
             return "Continuar";
+        }
+        if (i == AJUSTES) {
+            return "Opciones";
         }
         return "Salir";
     }

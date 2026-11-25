@@ -2,11 +2,12 @@ package juego.entidades;
 
 import estructuras.ListaEnlazada;
 
-// El héroe humano. Guarda atributos, vida, maná, oro y su repertorio de habilidades (máximo 4).
-// Las fórmulas son simples:
+// El héroe humano. Guarda su clase, atributos, vida, maná, energía, oro, su arma, sus puños y
+// su repertorio de HECHIZOS (máximo 4). Las fórmulas son simples:
 //   Fuerza        -> vida máxima y daño físico
-//   Destreza      -> defensa y minijuego de la barra
+//   Destreza      -> defensa, energía máxima y minijuegos de combate
 //   Inteligencia  -> maná máximo, potencia mágica y curación
+// Recursos: el MANÁ se gasta en hechizos; la ENERGÍA se gasta en armas y puños y se recupera cada ronda.
 public final class Jugador {
 
     // Constantes
@@ -14,37 +15,60 @@ public final class Jugador {
     public static final int DESTREZA = 1;
     public static final int INTELIGENCIA = 2;
     public static final int MAX_HABILIDADES = 4;
-    private static final int ATRIBUTO_INICIAL = 3;
     private static final int ATRIBUTO_MAXIMO = 20;
+    public static final int ENERGIA_POR_RONDA = 3;
 
     // Atributos
+    private final Clase clase;
     private int fuerza;
     private int destreza;
     private int inteligencia;
     private int vida;
     private int mana;
+    private int energia;
     private int oro;
+    private boolean guardia;
+    private final EstadoVeneno veneno = new EstadoVeneno();
+    private final HabilidadArma arma;
+    private final HabilidadPunos punos = new HabilidadPunos();
     private final ListaEnlazada<Habilidad> habilidades = new ListaEnlazada<>();
 
-    // Constructor de una partida nueva: atributos 3/3/3, vida y maná llenos, solo sabe atacar
-    public Jugador() {
-        this(ATRIBUTO_INICIAL, ATRIBUTO_INICIAL, ATRIBUTO_INICIAL, 0, 0, 0);
+    // Constructor de una partida nueva con la clase elegida: atributos de la clase, todo lleno
+    // y un solo hechizo (el de la clase)
+    public Jugador(Clase clase) {
+        this(clase, clase.getFuerza(), clase.getDestreza(), clase.getInteligencia(), 0, 0, 0);
         this.vida = getVidaMaxima();
         this.mana = getManaMaximo();
-        habilidades.agregar(new HabilidadAtaque());
+        habilidades.agregar(CatalogoHabilidades.crear(clase.getHechizoInicial()));
     }
 
-    // Constructor para cargar una partida: sin habilidades (se agregan después)
-    public Jugador(int fuerza, int destreza, int inteligencia, int vida, int mana, int oro) {
+    // Héroe por defecto: el druida (atributos 3/3/3)
+    public Jugador() {
+        this(Clase.DRUIDA);
+    }
+
+    // Constructor para cargar una partida: sin hechizos (se agregan después)
+    public Jugador(Clase clase, int fuerza, int destreza, int inteligencia, int vida, int mana, int oro) {
+        if (clase == null) {
+            throw new IllegalArgumentException("el héroe necesita una clase");
+        }
         validarAtributo(fuerza, "fuerza");
         validarAtributo(destreza, "destreza");
         validarAtributo(inteligencia, "inteligencia");
+        this.clase = clase;
+        this.arma = clase.crearArma();
         this.fuerza = fuerza;
         this.destreza = destreza;
         this.inteligencia = inteligencia;
         this.vida = limitar(vida, 0, getVidaMaxima());
         this.mana = limitar(mana, 0, getManaMaximo());
+        this.energia = getEnergiaMaxima();
         this.oro = Math.max(0, oro);
+    }
+
+    // Igual, sin clase: usa la de por defecto (lo usan las pruebas)
+    public Jugador(int fuerza, int destreza, int inteligencia, int vida, int mana, int oro) {
+        this(Clase.DRUIDA, fuerza, destreza, inteligencia, vida, mana, oro);
     }
 
     // Estadísticas derivadas (las fórmulas del juego)
@@ -54,6 +78,10 @@ public final class Jugador {
 
     public int getManaMaximo() {
         return 6 + 3 * inteligencia;
+    }
+
+    public int getEnergiaMaxima() {
+        return 6 + 2 * destreza;
     }
 
     public int getDefensa() {
@@ -87,9 +115,44 @@ public final class Jugador {
         if (danioBruto < 0) {
             throw new IllegalArgumentException("el daño no puede ser negativo: " + danioBruto);
         }
+        if (guardia) {
+            danioBruto = danioBruto / 2;
+        }
         int real = Math.max(1, danioBruto - getDefensa());
         vida = Math.max(0, vida - real);
         return real;
+    }
+
+    // Veneno: se aplica al terminar el turno del héroe
+    public void envenenar(int turnos, int danio) {
+        veneno.aplicar(turnos, danio);
+    }
+
+    // Devuelve el daño que hizo el veneno en este turno (0 si no estaba envenenado)
+    public int aplicarVeneno() {
+        int danio = veneno.pasarTurno();
+        vida = Math.max(0, vida - danio);
+        return danio;
+    }
+
+    public boolean estaEnvenenado() {
+        return veneno.estaActivo();
+    }
+
+    // Guardia: mientras dura la ronda, los golpes recibidos valen la mitad
+    public void setGuardia(boolean activa) {
+        guardia = activa;
+    }
+
+    public boolean estaEnGuardia() {
+        return guardia;
+    }
+
+    // Al empezar un combate: energía llena y sin estados de la pelea anterior
+    public void prepararCombate() {
+        energia = getEnergiaMaxima();
+        guardia = false;
+        veneno.limpiar();
     }
 
     // Devuelve cuánta vida se recuperó realmente
@@ -123,6 +186,24 @@ public final class Jugador {
         return mana >= costoMana;
     }
 
+    public boolean puedePagarEnergia(int costoEnergia) {
+        return energia >= costoEnergia;
+    }
+
+    public void gastarEnergia(int cantidad) {
+        if (cantidad < 0 || cantidad > energia) {
+            throw new IllegalArgumentException("energía insuficiente: se pide " + cantidad + " y hay " + energia);
+        }
+        energia = energia - cantidad;
+    }
+
+    public void recuperarEnergia(int cantidad) {
+        if (cantidad < 0) {
+            throw new IllegalArgumentException("la energía a recuperar no puede ser negativa: " + cantidad);
+        }
+        energia = Math.min(getEnergiaMaxima(), energia + cantidad);
+    }
+
     public void gastarMana(int cantidad) {
         if (cantidad < 0 || cantidad > mana) {
             throw new IllegalArgumentException("maná insuficiente: se pide " + cantidad + " y hay " + mana);
@@ -140,6 +221,7 @@ public final class Jugador {
             vida = Math.min(getVidaMaxima(), vida + 5 * cantidad);
         } else if (cual == DESTREZA) {
             destreza = Math.min(ATRIBUTO_MAXIMO, destreza + cantidad);
+            energia = Math.min(getEnergiaMaxima(), energia + 2 * cantidad);
         } else if (cual == INTELIGENCIA) {
             inteligencia = Math.min(ATRIBUTO_MAXIMO, inteligencia + cantidad);
             mana = Math.min(getManaMaximo(), mana + 3 * cantidad);
@@ -148,7 +230,7 @@ public final class Jugador {
         }
     }
 
-    // Repertorio de habilidades (lista enlazada, máximo 4)
+    // Repertorio de hechizos (lista enlazada, máximo 4)
     public boolean aprenderHabilidad(Habilidad nueva) {
         if (nueva == null) {
             throw new IllegalArgumentException("la habilidad no puede ser nula");
@@ -177,8 +259,12 @@ public final class Jugador {
         return habilidades.tamanio();
     }
 
-    // Código de la primera habilidad del catálogo que todavía no se conoce (null si ya las tiene todas)
+    // Código del primer hechizo del catálogo que todavía no se conoce.
+    // Devuelve null si no hay lugar (ya tiene 4) o si ya los conoce todos.
     public String proximaHabilidadPorAprender() {
+        if (habilidades.tamanio() >= MAX_HABILIDADES) {
+            return null;
+        }
         for (int i = 0; i < CatalogoHabilidades.CANTIDAD; i++) {
             String codigo = CatalogoHabilidades.codigoPorOrden(i);
             if (!conoceHabilidad(codigo)) {
@@ -189,6 +275,22 @@ public final class Jugador {
     }
 
     // Getters
+    public Clase getClase() {
+        return clase;
+    }
+
+    public HabilidadArma getArma() {
+        return arma;
+    }
+
+    public HabilidadPunos getPunos() {
+        return punos;
+    }
+
+    public int getEnergia() {
+        return energia;
+    }
+
     public int getFuerza() {
         return fuerza;
     }

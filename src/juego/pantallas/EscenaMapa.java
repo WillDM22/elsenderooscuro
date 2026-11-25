@@ -54,7 +54,7 @@ public class EscenaMapa extends Escena {
     @Override
     public void alEntrar() {
         fondo = recursos.getFondoMapa(partida.getMapa());
-        vecinos = partida.getAdyacentes();
+        vecinos = partida.getAdyacentesOrdenados();
         ruta = partida.getRuta();
         if (autoguardar) {
             guardar("Aventura guardada automáticamente.");
@@ -87,6 +87,11 @@ public class EscenaMapa extends Escena {
         }
         if (entrada.fuePresionada(KeyEvent.VK_G)) {
             guardar("Partida guardada.");
+        }
+        if (entrada.fuePresionada(KeyEvent.VK_O) && !verDiario) {
+            recursos.getArchivos().guardar(partida);
+            getContexto().irA(new EscenaOpciones(recursos, this));
+            return;
         }
         if (entrada.fuePresionada(KeyEvent.VK_ESCAPE)) {
             if (verDiario) {
@@ -247,7 +252,7 @@ public class EscenaMapa extends Escena {
     private void dibujarHeroe(Graphics2D g) {
         NodoMapa nodo = partida.getNodoActualCompleto();
         double salto = Math.abs(Math.sin(tiempo * 3)) * 6;
-        BufferedImage heroe = recursos.getSprites().obtener(CatalogoSprites.JUGADOR, 3);
+        BufferedImage heroe = recursos.getSprites().obtener(partida.getJugador().getClase().getSprite(), 3);
         DibujoMedieval.dibujarConSombra(g, heroe, nodo.getX(), nodo.getY() - RADIO_NODO - 22 - salto);
     }
 
@@ -262,7 +267,7 @@ public class EscenaMapa extends Escena {
             texto = texto + "  Destino: " + pista(destino.getTipo());
         }
         TextoPixel.izquierda(g, texto, 28, 596, 16, Paleta.HUESO);
-        TextoPixel.izquierda(g, "↑↓ elegir   ENTER avanzar   H diario   G guardar   ESC menú", 28, 620, 14, Paleta.PERGAMINO);
+        TextoPixel.izquierda(g, "↑↓ elegir   ENTER avanzar   H diario   G guardar   O opciones   ESC menú", 28, 620, 14, Paleta.PERGAMINO);
         if (tiempoAviso > 0) {
             TextoPixel.derecha(g, aviso, ANCHO - 28, 596, 15, Paleta.ORO);
         }

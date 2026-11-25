@@ -10,8 +10,22 @@ import utilidades.Tokenizador;
 // Texto con letra gruesa de aspecto retro y una sombra negra (se lee bien sobre cualquier fondo).
 public final class TextoPixel {
 
+    // Escala global del texto (la cambia la pantalla de opciones): 1.0 = normal
+    private static double escala = 1.0;
+
     // Sin instancias
     private TextoPixel() {
+    }
+
+    public static void setEscala(double nueva) {
+        if (!(nueva > 0.5 && nueva < 2.0)) {
+            throw new IllegalArgumentException("escala de texto fuera de rango: " + nueva);
+        }
+        escala = nueva;
+    }
+
+    public static double getEscala() {
+        return escala;
     }
 
     public static void izquierda(Graphics2D g, String texto, double x, double y, int tamanio, Color color) {
@@ -114,6 +128,6 @@ public final class TextoPixel {
     }
 
     private static void preparar(Graphics2D g, int tamanio) {
-        g.setFont(new Font(Font.MONOSPACED, Font.BOLD, tamanio));
+        g.setFont(new Font(Font.MONOSPACED, Font.BOLD, Math.max(6, (int) Math.round(tamanio * escala))));
     }
 }

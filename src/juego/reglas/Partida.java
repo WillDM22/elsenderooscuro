@@ -3,6 +3,7 @@ package juego.reglas;
 import estructuras.ListaEnlazada;
 import estructuras.PilaEnlazada;
 import java.util.Random;
+import juego.entidades.Clase;
 import juego.entidades.Enemigo;
 import juego.entidades.FabricaEnemigos;
 import juego.entidades.Jugador;
@@ -45,13 +46,13 @@ public class Partida {
     }
 
     // Partida nueva: héroe nuevo, parado en el inicio
-    public static Partida nueva(long semilla, ListaEnlazada<EventoNarrativo> eventos) {
+    public static Partida nueva(long semilla, ListaEnlazada<EventoNarrativo> eventos, Clase clase) {
         MapaBosque mapaTemporal = new MapaBosque(semilla);
         PilaEnlazada<Integer> ruta = new PilaEnlazada<>();
         ruta.apilar(mapaTemporal.getIdInicio());
         PilaEnlazada<Registro> diario = new PilaEnlazada<>();
-        diario.apilar(new Registro(mapaTemporal.getIdInicio(), "Entras al Sendero Oscuro."));
-        return new Partida(semilla, new Jugador(), ruta, diario, 0, eventos);
+        diario.apilar(new Registro(mapaTemporal.getIdInicio(), "Entras al Sendero Oscuro como " + clase.getNombre() + "."));
+        return new Partida(semilla, new Jugador(clase), ruta, diario, 0, eventos);
     }
 
     // Marca en el mapa los nodos que están en la ruta.
@@ -80,6 +81,24 @@ public class Partida {
     // A dónde se puede ir desde el lugar actual
     public ListaEnlazada<Integer> getAdyacentes() {
         return mapa.getGrafo().idsAdyacentes(getNodoActual());
+    }
+
+    // Los mismos destinos, ordenados de arriba hacia abajo según su posición en pantalla.
+    // Así la flecha "arriba" del teclado elige el lugar de más arriba y "abajo" el de más abajo.
+    // Es un ordenamiento por inserción: cada id se coloca antes del primero que está más abajo.
+    public ListaEnlazada<Integer> getAdyacentesOrdenados() {
+        ListaEnlazada<Integer> original = getAdyacentes();
+        ListaEnlazada<Integer> ordenados = new ListaEnlazada<>();
+        for (int i = 0; i < original.tamanio(); i++) {
+            int id = original.obtener(i);
+            int y = mapa.getNodo(id).getY();
+            int posicion = 0;
+            while (posicion < ordenados.tamanio() && mapa.getNodo(ordenados.obtener(posicion)).getY() <= y) {
+                posicion++;
+            }
+            ordenados.insertar(posicion, id);
+        }
+        return ordenados;
     }
 
     public boolean puedeMoverA(int id) {

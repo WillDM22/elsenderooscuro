@@ -1,6 +1,7 @@
 package juego.reglas;
 
 import estructuras.ColaEnlazada;
+import java.util.Random;
 import juego.entidades.Calidad;
 import juego.entidades.Enemigo;
 import juego.entidades.Habilidad;
@@ -9,6 +10,12 @@ import juego.entidades.Jugador;
 // Lógica de un combate por turnos. No dibuja nada: la escena solo le pide cosas y muestra el estado.
 // Los TURNOS están en una COLA (FIFO): se mira quién está al frente, actúa, y se lo saca de la cola.
 // Cuando la cola se vacía comienza una ronda nueva: el jugador y después el enemigo (el lobo, dos veces).
+//
+// Acciones del jugador en su turno (estilo Pokémon):
+//   LUCHAR  -> arma o puños (cuestan ENERGÍA) con un minijuego al azar
+//   MAGIA   -> un hechizo de su repertorio (cuesta MANÁ) con un minijuego al azar
+//   DEFENDER-> guardia (golpes a la mitad) y recupera energía
+//   HUIR    -> intento de escapar (no sirve contra jefes)
 public class Combate {
 
     // Estados del combate
@@ -24,41 +31,76 @@ public class Combate {
     public static final int JUGADOR = 1;
     public static final int ENEMIGO = 2;
 
+    // Reglas de energía y huida
+    public static final int ENERGIA_DEFENSA = 4;
+    private static final int HUIDA_BASE = 40;
+    private static final int HUIDA_POR_DESTREZA = 5;
+    private static final int HUIDA_MAXIMA = 90;
+
     // Atributos
     private final Jugador jugador;
     private final Enemigo enemigo;
     private final boolean esJefe;
+    private final int nivel;
+    private final Random azar;
     private final ColaEnlazada<Integer> turnos = new ColaEnlazada<>();
     private int estado;
+    private Minijuego minijuego;
     private BarraPrecision barra;
+    private MinijuegoRafaga rafaga;
+    private MinijuegoAnillo anillo;
     private Habilidad habilidadActual;
     private String mensaje = "";
     private int rondas;
 
-    // Constructor
+    // Constructor sencillo: nivel 0 y azar propio
     public Combate(Jugador jugador, Enemigo enemigo, boolean esJefe) {
-        if (jugador == null || enemigo == null) {
-            throw new IllegalArgumentException("el combate necesita jugador y enemigo");
+        this(jugador, enemigo, esJefe, 0, new Random());
+    }
+
+    // Constructor completo: el nivel endurece los minijuegos; el azar elige cuál sale (se puede fijar en pruebas)
+    public Combate(Jugador jugador, Enemigo enemigo, boolean esJefe, int nivel, Random azar) {
+        if (jugador == null || enemigo == null || azar == null) {
+            throw new IllegalArgumentException("el combate necesita jugador, enemigo y azar");
         }
         this.jugador = jugador;
         this.enemigo = enemigo;
         this.esJefe = esJefe;
+        this.nivel = Dificultad.limitarNivel(nivel);
+        this.azar = azar;
         this.mensaje = "¡" + enemigo.getNombre() + " aparece!";
+        jugador.prepararCombate();
         prepararSiguienteTurno();
     }
 
     // Acciones del jugador
-    // Intenta usar la habilidad número "indice" de su repertorio. Devuelve false si no se puede.
+    // Hechizo número "indice" de su repertorio. Devuelve false si no se puede.
     public boolean elegirHabilidad(int indice) {
-        if (estado != ELECCION) {
-            return false;
-        }
         if (indice < 0 || indice >= jugador.cantidadHabilidades()) {
             return false;
         }
-        Habilidad habilidad = jugador.getHabilidad(indice);
+        return iniciarAccion(jugador.getHabilidad(indice));
+    }
+
+    public boolean elegirArma() {
+        return iniciarAccion(jugador.getArma());
+    }
+
+    public boolean elegirPunos() {
+        return iniciarAccion(jugador.getPunos());
+    }
+
+    // Revisa que se pueda pagar la acción, la paga y la empieza
+    private boolean iniciarAccion(Habilidad habilidad) {
+        if (estado != ELECCION) {
+            return false;
+        }
         if (!jugador.puedePagar(habilidad.getCostoMana())) {
             mensaje = "No tienes maná suficiente para " + habilidad.getNombre() + ".";
+            return false;
+        }
+        if (!jugador.puedePagarEnergia(habilidad.getCostoEnergia())) {
+            mensaje = "No tienes energía suficiente para " + habilidad.getNombre() + ".";
             return false;
         }
         if (habilidad.esEscape() && esJefe) {
@@ -66,42 +108,114 @@ public class Combate {
             return false;
         }
         jugador.gastarMana(habilidad.getCostoMana());
+        jugador.gastarEnergia(habilidad.getCostoEnergia());
         habilidadActual = habilidad;
         if (habilidad.usaBarra()) {
-            barra = new BarraPrecision(jugador, habilidad.getDificultadBarra());
+            crearMinijuego(habilidad.getDificultadBarra());
             estado = APUNTANDO;
-            mensaje = "¡Frena la barra con ESPACIO!";
+            mensaje = minijuego.getInstruccion();
         } else {
             resolver(Calidad.NORMAL);
         }
         return true;
     }
 
-    // Avance de la barra mientras se apunta
-    public void actualizar(double dt) {
-        if (estado == APUNTANDO) {
-            barra.actualizar(dt);
+    // Elige al azar uno de los tres minijuegos: barra (50%), ráfaga (25%) o anillo (25%)
+    private void crearMinijuego(double dificultad) {
+        barra = null;
+        rafaga = null;
+        anillo = null;
+        int tirada = azar.nextInt(100);
+        if (tirada < 50) {
+            barra = new BarraPrecision(jugador, dificultad, nivel);
+            minijuego = barra;
+        } else if (tirada < 75) {
+            rafaga = new MinijuegoRafaga(jugador, dificultad, nivel);
+            minijuego = rafaga;
+        } else {
+            anillo = new MinijuegoAnillo(jugador, dificultad, nivel);
+            minijuego = anillo;
         }
     }
 
-    // El jugador frena la barra: se mide la calidad y se resuelve la habilidad
-    public void detenerBarra() {
+    // Defender: la guardia reduce a la mitad los golpes de esta ronda y se recupera energía
+    public boolean defender() {
+        if (estado != ELECCION) {
+            return false;
+        }
+        jugador.setGuardia(true);
+        jugador.recuperarEnergia(ENERGIA_DEFENSA);
+        mensaje = "Te cubres con tu guardia: recibirás la mitad de daño esta ronda. (+" + ENERGIA_DEFENSA + " energía)";
+        habilidadActual = null;
+        terminarTurnoDelJugador();
+        return true;
+    }
+
+    // Huir: probabilidad según la Destreza. En un jefe no se puede. Si falla, se pierde el turno.
+    public boolean huir() {
+        if (estado != ELECCION) {
+            return false;
+        }
+        if (esJefe) {
+            mensaje = "¡No puedes huir de un jefe!";
+            return false;
+        }
+        if (azar.nextInt(100) < getProbabilidadDeHuir()) {
+            mensaje = "Logras escabullirte entre los árboles.";
+            turnos.desencolar();
+            estado = HUIDA;
+        } else {
+            mensaje = enemigo.getNombre() + " te corta el paso: no logras huir.";
+            habilidadActual = null;
+            terminarTurnoDelJugador();
+        }
+        return true;
+    }
+
+    public int getProbabilidadDeHuir() {
+        return Math.min(HUIDA_MAXIMA, HUIDA_BASE + HUIDA_POR_DESTREZA * jugador.getDestreza());
+    }
+
+    // Avance del minijuego mientras se apunta (el ráfaga y el anillo pueden terminar solos por tiempo)
+    public void actualizar(double dt) {
+        if (estado == APUNTANDO) {
+            minijuego.actualizar(dt);
+            if (minijuego.estaTerminado()) {
+                resolver(minijuego.getResultado());
+            }
+        }
+    }
+
+    // El jugador apretó ESPACIO durante el minijuego
+    public void pulsar() {
         if (estado != APUNTANDO) {
             return;
         }
-        int calidad = barra.detener();
-        resolver(calidad);
+        minijuego.pulsar();
+        if (minijuego.estaTerminado()) {
+            resolver(minijuego.getResultado());
+        }
     }
 
     // Aplica la habilidad y decide cómo sigue el combate
     private void resolver(int calidad) {
         mensaje = habilidadActual.aplicar(jugador, enemigo, calidad);
-        turnos.desencolar();
         if (habilidadActual.esEscape()) {
+            turnos.desencolar();
             estado = HUIDA;
         } else {
-            estado = RESULTADO;
+            terminarTurnoDelJugador();
         }
+    }
+
+    // Saca al jugador de la cola, le cobra el veneno (si lo tiene) y muestra el resultado
+    private void terminarTurnoDelJugador() {
+        turnos.desencolar();
+        if (jugador.estaEnvenenado() && !enemigo.estaMuerto()) {
+            int danio = jugador.aplicarVeneno();
+            mensaje = mensaje + " El veneno te quita " + danio + " de vida.";
+        }
+        estado = RESULTADO;
     }
 
     // El jugador toca "continuar" después de leer un mensaje
@@ -129,6 +243,10 @@ public class Combate {
         }
         mensaje = enemigo.atacar(jugador);
         turnos.desencolar();
+        if (enemigo.estaEnvenenado() && !jugador.estaMuerto()) {
+            int danio = enemigo.aplicarVeneno();
+            mensaje = mensaje + " El veneno le quita " + danio + " de vida.";
+        }
         estado = RESULTADO;
     }
 
@@ -136,6 +254,11 @@ public class Combate {
     private void prepararSiguienteTurno() {
         if (turnos.estaVacia()) {
             rondas++;
+            if (rondas > 1) {
+                // Empieza una ronda nueva: se acaba la guardia y se recupera un poco de energía
+                jugador.setGuardia(false);
+                jugador.recuperarEnergia(Jugador.ENERGIA_POR_RONDA);
+            }
             turnos.encolar(JUGADOR);
             for (int i = 0; i < enemigo.getTurnosPorRonda(); i++) {
                 turnos.encolar(ENEMIGO);
@@ -170,8 +293,22 @@ public class Combate {
         return mensaje;
     }
 
+    // Minijuego en curso (null si no se está apuntando)
+    public Minijuego getMinijuego() {
+        return minijuego;
+    }
+
+    // Los tres getters siguientes devuelven el minijuego solo si es de ese tipo (si no, null)
     public BarraPrecision getBarra() {
         return barra;
+    }
+
+    public MinijuegoRafaga getRafaga() {
+        return rafaga;
+    }
+
+    public MinijuegoAnillo getAnillo() {
+        return anillo;
     }
 
     public Jugador getJugador() {
@@ -188,6 +325,10 @@ public class Combate {
 
     public int getRondas() {
         return rondas;
+    }
+
+    public int getNivel() {
+        return nivel;
     }
 
     public boolean haTerminado() {
