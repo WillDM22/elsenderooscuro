@@ -48,7 +48,6 @@ public class VentanaJuego {
     private final JPanel panel;
     private final Timer reloj;
     private int resolucionAplicada;
-    private boolean enPantallaCompleta;
     private long ultimo;
     private double acumulado;
 
@@ -120,6 +119,9 @@ public class VentanaJuego {
 
             @Override
             public void mouseMoved(MouseEvent e) {
+                // Swing solo avisa "mouseMoved" cuando NINGÚN botón está apretado. Si la Entrada cree que el botón sigue
+                // apretado (se perdió el aviso de "soltado", por ejemplo al reabrir la ventana), acá se corrige.
+                entrada.soltarMouse();
                 entrada.moverMouse(escalado.aLogicoX(e.getX()), escalado.aLogicoY(e.getY()));
             }
 
@@ -137,10 +139,6 @@ public class VentanaJuego {
     // y volver a mostrarla; el panel y el Motor siguen siendo los mismos, así que el juego no se reinicia.
     private void aplicarResolucion() {
         resolucionAplicada = opciones.getResolucion();
-        if (enPantallaCompleta) {
-            dispositivo().setFullScreenWindow(null);
-            enPantallaCompleta = false;
-        }
         if (marco.isDisplayable()) {
             marco.dispose();
         }
@@ -154,6 +152,9 @@ public class VentanaJuego {
         }
         marco.toFront();
         panel.requestFocusInWindow();
+        // Al cerrar y reabrir la ventana se pierde el aviso de "botón soltado": si no se limpia, la Entrada
+        // queda creyendo que el botón sigue apretado y no registra ningún click más.
+        motor.getEntrada().soltarMouse();
     }
 
     // Modos con ventana: tamaño deseado (1,0 o 1,25 veces el juego), pero nunca más grande que el espacio útil de la pantalla
@@ -179,18 +180,14 @@ public class VentanaJuego {
         panel.setPreferredSize(new Dimension(ancho, alto));
     }
 
-    // Pantalla completa: la ventana ocupa toda la pantalla. Si el sistema no soporta el modo "full screen" de Java,
-    // se usa una ventana sin bordes del tamaño de la pantalla. Del dibujo se encarga Escalado (franjas negras, sin estirar).
+    // Pantalla completa "sin bordes": una ventana sin título ni bordes del tamaño exacto del monitor. No se usa el modo
+    // exclusivo de Java (setFullScreenWindow) porque en Windows, con zoom de pantalla o varios monitores, puede dejar
+    // el mouse o el foco mal. Del dibujo se encarga Escalado (franjas negras, sin estirar).
     private void mostrarEnPantallaCompleta() {
-        GraphicsDevice dispositivo = dispositivo();
-        Rectangle pantalla = dispositivo.getDefaultConfiguration().getBounds();
+        Rectangle pantalla = dispositivo().getDefaultConfiguration().getBounds();
         panel.setPreferredSize(new Dimension(pantalla.width, pantalla.height));
         marco.pack();
         marco.setBounds(pantalla);
-        if (dispositivo.isFullScreenSupported()) {
-            dispositivo.setFullScreenWindow(marco);
-            enPantallaCompleta = true;
-        }
         marco.setVisible(true);
     }
 
@@ -277,9 +274,6 @@ public class VentanaJuego {
 
         if (motor.estaTerminado()) {
             reloj.stop();
-            if (enPantallaCompleta) {
-                dispositivo().setFullScreenWindow(null);
-            }
             marco.dispose();
             System.exit(0);
         }

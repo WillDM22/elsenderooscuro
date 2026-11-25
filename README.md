@@ -20,7 +20,7 @@ En un IDE: abrí `src` como carpeta de fuentes, codificación **UTF-8**, y que e
 
 | Para qué | Comando |
 | --- | --- |
-| Pruebas del juego (395 comprobaciones, sin ventana) | `java -cp out juego.pruebas.PruebaJuego` |
+| Pruebas del juego (403 comprobaciones, sin ventana) | `java -cp out juego.pruebas.PruebaJuego` |
 | Verificador de las estructuras del kit (Lista, Pila, Cola) | `java -cp out verificador.PruebaMisEstructuras` |
 | Exportar los sprites a `assets/` para editarlos | `java -cp out juego.graficos.ExportadorSprites` |
 

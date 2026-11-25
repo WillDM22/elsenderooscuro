@@ -4903,6 +4903,44 @@ private static int limitar(int valor, int cantidad) {
 - Es **un solo objeto compartido**: la pantalla lo cambia y la ventana lo lee en cada cuadro. Esto evita tener que avisarle a la ventana cuando algo cambia.
 
 ```java
+private void manejarMouse(Entrada entrada) {
+    if (!entrada.huboClick()) {
+        return;
+    }
+    for (int i = 0; i < FILAS; i++) {
+        int y = Y_FILA + i * SEPARACION;
+        if (entrada.getMouseY() >= y - 34 && entrada.getMouseY() <= y + 14
+                && entrada.getMouseX() >= X_FILA && entrada.getMouseX() <= X_FIN_FILA) {
+            fila = i;
+            if (i == VOLVER) {
+                volver();
+            } else if (entrada.getMouseX() < X_VALOR) {
+                cambiar(-1);
+            } else {
+                cambiar(1);
+            }
+            return;
+        }
+    }
+}
+```
+
+```java
+private void dibujarFila(Graphics2D g, int indice, String nombre, String valor) {
+    int y = Y_FILA + indice * SEPARACION;
+    boolean elegida = indice == fila;
+    Color color = elegida ? Paleta.ORO : Paleta.HUESO;
+    if (elegida) {
+        DibujoMedieval.flecha(g, X_FILA - 30, y - 9, 11 + Math.sin(tiempo * 8) * 1.5);
+    }
+    TextoPixel.izquierda(g, nombre, X_FILA, y, 26, color);
+    TextoPixel.centrado(g, "◀", X_FLECHA_IZQ, y, 26, color);
+    TextoPixel.centrado(g, valor, X_VALOR, y, 26, color);
+    TextoPixel.centrado(g, "▶", X_FLECHA_DER, y, 26, color);
+}
+```
+
+```java
 private void cambiar(int delta) {
     if (fila == RESOLUCION) {
         opciones.cambiarResolucion(delta);
@@ -4918,6 +4956,7 @@ private void cambiar(int delta) {
 ```
 
 - ↑ ↓ eligen la fila (aritmética modular otra vez), ← → cambian el valor, ESC o ENTER sobre "Volver" regresan a la pantalla de la que se vino (`anterior`, que se recibe por el constructor: sirve tanto desde el menú como desde el mapa).
+- **El mouse y las flechas.** Cada fila se dibuja con tres piezas en **columnas fijas**: la flecha ◀ en `X_FLECHA_IZQ`, el valor centrado en `X_VALOR` y la flecha ▶ en `X_FLECHA_DER`. `manejarMouse` decide con una sola comparación: un click a la **izquierda** de `X_VALOR` baja el valor y a la **derecha** lo sube. Por eso funciona igual con "100%" que con "Pantalla completa". (La primera versión alineaba el texto a la derecha: con valores cortos la ◀ quedaba del lado de "subir" y el click hacía lo contrario.)
 - `cambiar(delta)` modifica la opción de la fila actual y llama a `recursos.aplicarOpciones()`, que **actualiza la escala global del texto** y **guarda `opciones.txt`** en el momento: no hay botón "Aplicar".
 
 ### 9.11 `VentanaJuego` y `Escalado`
@@ -4932,10 +4971,6 @@ El kit tiene una `Ventana` de tamaño fijo. Para poder cambiar el modo de pantal
 ```java
 private void aplicarResolucion() {
     resolucionAplicada = opciones.getResolucion();
-    if (enPantallaCompleta) {
-        dispositivo().setFullScreenWindow(null);
-        enPantallaCompleta = false;
-    }
     if (marco.isDisplayable()) {
         marco.dispose();
     }
@@ -4949,6 +4984,9 @@ private void aplicarResolucion() {
     }
     marco.toFront();
     panel.requestFocusInWindow();
+    // Al cerrar y reabrir la ventana se pierde el aviso de "botón soltado": si no se limpia, la Entrada
+    // queda creyendo que el botón sigue apretado y no registra ningún click más.
+    motor.getEntrada().soltarMouse();
 }
 ```
 
@@ -4972,22 +5010,54 @@ private void mostrarEnVentana() {
 
 ```java
 private void mostrarEnPantallaCompleta() {
-    GraphicsDevice dispositivo = dispositivo();
-    Rectangle pantalla = dispositivo.getDefaultConfiguration().getBounds();
+    Rectangle pantalla = dispositivo().getDefaultConfiguration().getBounds();
     panel.setPreferredSize(new Dimension(pantalla.width, pantalla.height));
     marco.pack();
     marco.setBounds(pantalla);
-    if (dispositivo.isFullScreenSupported()) {
-        dispositivo.setFullScreenWindow(marco);
-        enPantallaCompleta = true;
-    }
     marco.setVisible(true);
 }
 ```
 
-- `aplicarResolucion` se llama al abrir y cada vez que cambia la opción. En cada cuadro (`tick`) se compara el modo de las opciones con el aplicado: **el cambio se ve al instante**. Si estaba en pantalla completa, primero sale (`setFullScreenWindow(null)`). Después hace `dispose()` y `setUndecorated(...)`: Swing **no deja** cambiar entre ventana con bordes y ventana sin bordes mientras la ventana está abierta, así que se cierra y se vuelve a mostrar. El `Motor`, la escena y la partida siguen siendo los mismos: **el juego no se reinicia**.
+- `aplicarResolucion` se llama al abrir y cada vez que cambia la opción. En cada cuadro (`tick`) se compara el modo de las opciones con el aplicado: **el cambio se ve al instante**. Hace `dispose()` y `setUndecorated(...)`: Swing **no deja** cambiar entre ventana con bordes y ventana sin bordes mientras la ventana está abierta, así que se cierra y se vuelve a mostrar. El `Motor`, la escena y la partida siguen siendo los mismos: **el juego no se reinicia**. Al terminar llama a `soltarMouse()` por una razón que se explica abajo (*el mouse trabado*).
 - `mostrarEnVentana`: pide el tamaño deseado (1,0 o 1,25 veces el juego) y hace `pack()` para que Swing cree la ventana. Recién ahí `getInsets()` dice cuánto ocupan los bordes y la barra de título. Con eso y el área útil de la pantalla (sin la barra de tareas) calcula el factor que **entra**; si es menor al deseado, achica el panel y vuelve a hacer `pack()`. Por último la centra.
-- `mostrarEnPantallaCompleta`: la ventana pasa a ser sin bordes y del tamaño del monitor. Se usa `setFullScreenWindow` si el sistema lo soporta; si no, queda una ventana sin bordes del tamaño de la pantalla. En los dos casos del dibujo se encarga `Escalado`.
+- `mostrarEnPantallaCompleta`: la ventana pasa a ser **sin bordes** y del tamaño exacto del monitor (`setBounds`). No se usa el modo exclusivo de Java (`setFullScreenWindow`) porque en Windows, con zoom de pantalla o varios monitores, puede dejar el mouse o el foco mal. Del dibujo se encarga `Escalado`.
+
+```java
+private void conectarMouse() {
+    final Entrada entrada = motor.getEntrada();
+    MouseAdapter adaptador = new MouseAdapter() {
+        @Override
+        public void mousePressed(MouseEvent e) {
+            if (e.getButton() == MouseEvent.BUTTON1) {
+                entrada.moverMouse(escalado.aLogicoX(e.getX()), escalado.aLogicoY(e.getY()));
+                entrada.apretarMouse();
+            }
+        }
+
+        @Override
+        public void mouseReleased(MouseEvent e) {
+            if (e.getButton() == MouseEvent.BUTTON1) {
+                entrada.soltarMouse();
+            }
+        }
+
+        @Override
+        public void mouseMoved(MouseEvent e) {
+            // Swing solo avisa "mouseMoved" cuando NINGÚN botón está apretado. Si la Entrada cree que el botón sigue
+            // apretado (se perdió el aviso de "soltado", por ejemplo al reabrir la ventana), acá se corrige.
+            entrada.soltarMouse();
+            entrada.moverMouse(escalado.aLogicoX(e.getX()), escalado.aLogicoY(e.getY()));
+        }
+
+        @Override
+        public void mouseDragged(MouseEvent e) {
+            entrada.moverMouse(escalado.aLogicoX(e.getX()), escalado.aLogicoY(e.getY()));
+        }
+    };
+    panel.addMouseListener(adaptador);
+    panel.addMouseMotionListener(adaptador);
+}
+```
 
 ```java
 private void sincronizarTamanio() {
@@ -5034,6 +5104,7 @@ private void dibujarBrillo(Graphics g) {
 }
 ```
 
+- `conectarMouse` y **el mouse trabado.** La `Entrada` del kit registra un click solo si el botón **no estaba ya apretado** (`apretarMouse` mira `botonAbajo`) y lo marca como suelto cuando le llega el aviso de "soltado". Al cambiar de modo la ventana se **cierra y se reabre** en medio del click, ese aviso se puede perder y la `Entrada` queda creyendo que el botón sigue apretado para siempre: el mouse deja de responder (el teclado sigue andando). Hay dos defensas: `aplicarResolucion` llama a `soltarMouse()` al terminar, y en `mouseMoved` (Swing solo lo envía cuando **ningún botón está apretado**) también se llama a `soltarMouse()`, así que el primer movimiento del mouse corrige cualquier estado trabado.
 - `sincronizarTamanio`: copia el tamaño **actual** del panel a `Escalado` (si todavía es 0 porque la ventana no se mostró, no hace nada). Se llama antes de dibujar y en cada `tick`, así el mouse siempre usa los mismos números que el dibujo.
 - `dibujarCuadro`: pinta todo de negro (esas serán las franjas), **traslada** el origen a la esquina del juego (`translate`), agranda con **un solo factor** (`scale(f, f)`) y recorta con `clipRect` al rectángulo 1024×640 para que nada se dibuje sobre las franjas. **No cambia una sola línea de las pantallas.**
 - `dibujarBrillo`: el brillo no es un ajuste del monitor: es una **capa encima** del dibujo. Menor a 100 % → una capa **negra** translúcida; mayor → una capa **blanca** muy suave. (`AlphaComposite` controla la transparencia.) Solo cubre el rectángulo del juego, no las franjas negras.
@@ -5124,7 +5195,7 @@ public final class Escalado {
 
 ## 11. `PruebaJuego`: cómo se prueba todo sin abrir la ventana
 
-`juego/pruebas/PruebaJuego.java` ejecuta **395 comprobaciones** automáticas. Se corre con `java -cp out juego.pruebas.PruebaJuego`. Imprime solo las que fallan y al final el total.
+`juego/pruebas/PruebaJuego.java` ejecuta **403 comprobaciones** automáticas. Se corre con `java -cp out juego.pruebas.PruebaJuego`. Imprime solo las que fallan y al final el total.
 
 La función clave es:
 

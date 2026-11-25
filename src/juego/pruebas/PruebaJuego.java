@@ -946,6 +946,26 @@ public class PruebaJuego {
                 && juego.graficos.TextoPixel.getEscala() == 1.15);
         motor.capturar();
         comprobar("opciones (pantalla): se guardó en opciones.txt", new GestorArchivos(carpetaPantalla.getPath()).cargarOpciones().getTexto() == 2);
+
+        // Mouse: la flecha ◀ (x = 510) baja y la ▶ (x = 860) sube, en todas las filas y con cualquier largo de valor
+        Opciones op = recursos.getOpciones();
+        clicEn(motor, 510, 310);
+        comprobar("opciones (mouse): la flecha ◀ del brillo lo baja (1 -> 0)", op.getBrillo() == 0);
+        clicEn(motor, 860, 310);
+        comprobar("opciones (mouse): la flecha ▶ del brillo lo sube (0 -> 1)", op.getBrillo() == 1);
+        clicEn(motor, 510, 380);
+        comprobar("opciones (mouse): la flecha ◀ del texto lo baja (Grande -> Normal)", op.getTexto() == 1);
+        clicEn(motor, 860, 380);
+        comprobar("opciones (mouse): la flecha ▶ del texto lo sube (Normal -> Grande)", op.getTexto() == 2);
+        clicEn(motor, 510, 240);
+        comprobar("opciones (mouse): la flecha ◀ de la resolución baja el modo (Grande -> Normal)", op.getResolucion() == 0);
+        clicEn(motor, 860, 240);
+        clicEn(motor, 860, 240);
+        comprobar("opciones (mouse): dos clics seguidos en ▶ suben dos modos (Pantalla completa)", op.getResolucion() == 2);
+        clicEn(motor, 700, 240);
+        comprobar("opciones (mouse): un click a la derecha del centro del valor sube (ya en el tope, no cambia)", op.getResolucion() == 2);
+        clicEn(motor, 600, 240);
+        comprobar("opciones (mouse): un click a la izquierda del centro del valor baja", op.getResolucion() == 1);
         pulsar(motor, KeyEvent.VK_ESCAPE);
         motor.simular(0.1);
         comprobar("opciones (pantalla): ESC vuelve al menú", nombreEscena(motor).equals("EscenaMenu"));
@@ -1524,6 +1544,16 @@ public class PruebaJuego {
         motor.simular(0.1);
         comprobar("fin: ENTER vuelve al menú", nombreEscena(motor).equals("EscenaMenu"));
         recursos.getArchivos().borrarGuardado();
+    }
+
+    // Un click completo del mouse en la posición lógica (x, y): se mueve, se aprieta y se suelta
+    private static void clicEn(Motor motor, int x, int y) {
+        motor.getEntrada().moverMouse(x, y);
+        motor.simular(0.02);
+        motor.getEntrada().apretarMouse();
+        motor.simular(0.02);
+        motor.getEntrada().soltarMouse();
+        motor.simular(0.02);
     }
 
     private static void pulsar(Motor motor, int tecla) {

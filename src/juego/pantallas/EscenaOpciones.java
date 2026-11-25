@@ -11,7 +11,7 @@ import juego.recursos.Recursos;
 import motor.Entrada;
 import motor.Escena;
 
-// Pantalla de opciones: resolución, brillo y tamaño del texto. Se abre desde el menú principal y desde el mapa (tecla O).
+// Pantalla de opciones: modo de pantalla ("Resolución"), brillo y tamaño del texto. Se abre desde el menú principal y desde el mapa (tecla O).
 // ↑↓ elige la fila, ←→ cambia el valor, ESC (o ENTER sobre "Volver") vuelve a la pantalla anterior.
 // Cada cambio se aplica y se guarda en opciones.txt en el momento.
 public class EscenaOpciones extends Escena {
@@ -26,6 +26,12 @@ public class EscenaOpciones extends Escena {
     // Constantes de dibujo
     private static final int ANCHO = 1024;
     private static final int X_FILA = 170;
+    // Columnas fijas de cada fila: flecha ◀, valor (centrado) y flecha ▶. No dependen del largo del texto,
+    // así "izquierda del valor = bajar" y "derecha del valor = subir" valen igual en todas las filas.
+    private static final int X_FLECHA_IZQ = 510;
+    private static final int X_VALOR = 685;
+    private static final int X_FLECHA_DER = 860;
+    private static final int X_FIN_FILA = 890;
     private static final int Y_FILA = 250;
     private static final int SEPARACION = 70;
 
@@ -68,7 +74,8 @@ public class EscenaOpciones extends Escena {
         }
     }
 
-    // Mouse: pasar por encima elige la fila; click en la mitad izquierda baja el valor, en la derecha lo sube
+    // Mouse: click sobre una fila la elige; si el click cae a la izquierda del valor (donde está la flecha ◀) baja el valor,
+    // y si cae a la derecha (flecha ▶) lo sube
     private void manejarMouse(Entrada entrada) {
         if (!entrada.huboClick()) {
             return;
@@ -76,11 +83,11 @@ public class EscenaOpciones extends Escena {
         for (int i = 0; i < FILAS; i++) {
             int y = Y_FILA + i * SEPARACION;
             if (entrada.getMouseY() >= y - 34 && entrada.getMouseY() <= y + 14
-                    && entrada.getMouseX() >= X_FILA && entrada.getMouseX() <= ANCHO - X_FILA) {
+                    && entrada.getMouseX() >= X_FILA && entrada.getMouseX() <= X_FIN_FILA) {
                 fila = i;
                 if (i == VOLVER) {
                     volver();
-                } else if (entrada.getMouseX() < ANCHO / 2 + 100) {
+                } else if (entrada.getMouseX() < X_VALOR) {
                     cambiar(-1);
                 } else {
                     cambiar(1);
@@ -136,7 +143,9 @@ public class EscenaOpciones extends Escena {
             DibujoMedieval.flecha(g, X_FILA - 30, y - 9, 11 + Math.sin(tiempo * 8) * 1.5);
         }
         TextoPixel.izquierda(g, nombre, X_FILA, y, 26, color);
-        TextoPixel.derecha(g, "◀  " + valor + "  ▶", ANCHO - X_FILA, y, 26, color);
+        TextoPixel.centrado(g, "◀", X_FLECHA_IZQ, y, 26, color);
+        TextoPixel.centrado(g, valor, X_VALOR, y, 26, color);
+        TextoPixel.centrado(g, "▶", X_FLECHA_DER, y, 26, color);
     }
 
     // Para las pruebas
