@@ -1,0 +1,4 @@
+# Normalizar texto, pero los .bat deben quedar con saltos de linea de Windows
+* text=auto
+*.bat text eol=crlf
+*.sh text eol=lf

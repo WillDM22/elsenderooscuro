@@ -1,0 +1,18 @@
+CARPETA DE IMÁGENES (OPCIONAL)
+
+El juego NO necesita nada de esta carpeta: si no encuentra una imagen, dibuja el sprite
+con Graphics2D (los dibujos hechos con texto de juego/graficos/CatalogoSprites.java).
+
+Si querés usar tus propios dibujos, poné acá archivos .png de 16x16 píxeles con estos nombres:
+
+  jugador.png      esqueleto.png    lobo.png        brujo.png       rey.png
+  calavera.png     interrogacion.png cofre.png      jefe.png        inicio.png
+  altar.png        arbol.png        antorcha.png    corazon.png     pocion.png
+
+Para empezar desde los dibujos actuales, ejecutá (desde la raíz del proyecto, después de compilar):
+
+  java -cp out juego.graficos.ExportadorSprites
+
+Eso crea los 15 .png aquí. Editalos con Piskel (gratis, en el navegador), Aseprite o GIMP y volvé a
+ejecutar el juego: el que tenga .png usa tu imagen; el que no, usa el dibujo de respaldo.
+Un .png dañado también se reemplaza por el respaldo (el juego nunca falla por una imagen).

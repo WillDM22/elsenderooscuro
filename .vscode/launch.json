@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "El Sendero Oscuro (juego)",
+            "request": "launch",
+            "mainClass": "juego.Main",
+            "projectName": "",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "java",
+            "name": "Pruebas del juego",
+            "request": "launch",
+            "mainClass": "juego.pruebas.PruebaJuego",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "java",
+            "name": "Verificador de estructuras",
+            "request": "launch",
+            "mainClass": "verificador.PruebaMisEstructuras",
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
