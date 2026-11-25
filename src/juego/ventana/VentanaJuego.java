@@ -5,7 +5,13 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -20,9 +26,12 @@ import motor.Escena;
 import motor.Motor;
 
 // Ventana propia del juego. Hace lo mismo que la Ventana del kit (reloj + Motor + dibujo), pero además:
-//   - cambia de tamaño cuando cambia la resolución en Opciones (el juego se dibuja en 1024 x 640 y se agranda),
-//   - aplica el brillo (una capa oscura o clara por encima de todo),
-//   - convierte las coordenadas del mouse al tamaño lógico.
+//   - tiene tres modos de pantalla (Opciones): Normal, Grande y Pantalla completa,
+//   - el juego se dibuja siempre en 1024 x 640 y se agranda con el MISMO factor en ancho y alto: nunca se estira;
+//     si sobra lugar (pantalla completa en un monitor que no es 16:10) quedan franjas negras y el juego va centrado,
+//   - una ventana nunca es más grande que la pantalla (se achica el factor hasta que entre),
+//   - aplica el brillo (una capa oscura o clara por encima del juego),
+//   - convierte las coordenadas del mouse al tamaño lógico usando el tamaño REAL del panel en ese momento.
 // El Motor, las Escenas y la Entrada son los del kit; solo se reemplaza la ventana, porque la del kit tiene tamaño fijo.
 public class VentanaJuego {
 
@@ -39,6 +48,7 @@ public class VentanaJuego {
     private final JPanel panel;
     private final Timer reloj;
     private int resolucionAplicada;
+    private boolean enPantallaCompleta;
     private long ultimo;
     private double acumulado;
 
@@ -55,13 +65,12 @@ public class VentanaJuego {
             }
         };
         panel.setFocusable(true);
+        panel.setBackground(Color.BLACK);
         panel.addKeyListener(motor.getEntrada());
         conectarMouse();
 
         marco.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        marco.setResizable(false);
         marco.add(panel);
-        aplicarResolucion();
 
         reloj = new Timer(8, new ActionListener() {
             @Override
@@ -85,8 +94,7 @@ public class VentanaJuego {
     // Arranque
     public void iniciar(Escena inicial) {
         motor.iniciar(inicial);
-        marco.setVisible(true);
-        panel.requestFocusInWindow();
+        aplicarResolucion();
         ultimo = System.nanoTime();
         reloj.start();
     }
@@ -124,30 +132,111 @@ public class VentanaJuego {
         panel.addMouseMotionListener(adaptador);
     }
 
-    // Pone la ventana al tamaño de la resolución elegida (se hace sobre la misma ventana: no se vuelve a crear)
+    // Deja la ventana en el modo elegido (Normal, Grande o Pantalla completa). Se usa al abrir y cada vez que cambia la opción.
+    // Para cambiar entre ventana con bordes y pantalla completa (sin bordes) Swing obliga a cerrar la ventana (dispose)
+    // y volver a mostrarla; el panel y el Motor siguen siendo los mismos, así que el juego no se reinicia.
     private void aplicarResolucion() {
         resolucionAplicada = opciones.getResolucion();
-        panel.setPreferredSize(new Dimension(opciones.getAncho(), opciones.getAlto()));
-        escalado.setTamanioReal(opciones.getAncho(), opciones.getAlto());
-        marco.pack();
-        marco.setLocationRelativeTo(null);
+        if (enPantallaCompleta) {
+            dispositivo().setFullScreenWindow(null);
+            enPantallaCompleta = false;
+        }
+        if (marco.isDisplayable()) {
+            marco.dispose();
+        }
+        boolean completa = opciones.esPantallaCompleta();
+        marco.setUndecorated(completa);
+        marco.setResizable(false);
+        if (completa) {
+            mostrarEnPantallaCompleta();
+        } else {
+            mostrarEnVentana();
+        }
+        marco.toFront();
+        panel.requestFocusInWindow();
     }
 
-    // Dibuja el juego agrandado y encima la capa del brillo
+    // Modos con ventana: tamaño deseado (1,0 o 1,25 veces el juego), pero nunca más grande que el espacio útil de la pantalla
+    private void mostrarEnVentana() {
+        double deseado = opciones.getFactorVentana();
+        fijarTamanioPanel(deseado);
+        marco.pack();
+        Insets bordes = marco.getInsets();
+        Rectangle util = areaUtil();
+        double factor = escalado.limitarFactor(util.width - bordes.left - bordes.right,
+                util.height - bordes.top - bordes.bottom, deseado);
+        if (factor < deseado) {
+            fijarTamanioPanel(factor);
+            marco.pack();
+        }
+        marco.setLocation(util.x + (util.width - marco.getWidth()) / 2, util.y + (util.height - marco.getHeight()) / 2);
+        marco.setVisible(true);
+    }
+
+    private void fijarTamanioPanel(double factor) {
+        int ancho = (int) Math.round(ANCHO_LOGICO * factor);
+        int alto = (int) Math.round(ALTO_LOGICO * factor);
+        panel.setPreferredSize(new Dimension(ancho, alto));
+    }
+
+    // Pantalla completa: la ventana ocupa toda la pantalla. Si el sistema no soporta el modo "full screen" de Java,
+    // se usa una ventana sin bordes del tamaño de la pantalla. Del dibujo se encarga Escalado (franjas negras, sin estirar).
+    private void mostrarEnPantallaCompleta() {
+        GraphicsDevice dispositivo = dispositivo();
+        Rectangle pantalla = dispositivo.getDefaultConfiguration().getBounds();
+        panel.setPreferredSize(new Dimension(pantalla.width, pantalla.height));
+        marco.pack();
+        marco.setBounds(pantalla);
+        if (dispositivo.isFullScreenSupported()) {
+            dispositivo.setFullScreenWindow(marco);
+            enPantallaCompleta = true;
+        }
+        marco.setVisible(true);
+    }
+
+    // Pantalla donde está (o va a estar) la ventana
+    private GraphicsDevice dispositivo() {
+        GraphicsConfiguration configuracion = marco.getGraphicsConfiguration();
+        if (configuracion != null) {
+            return configuracion.getDevice();
+        }
+        return GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+    }
+
+    // Parte de la pantalla que no ocupan la barra de tareas ni otras barras del sistema
+    private Rectangle areaUtil() {
+        GraphicsConfiguration configuracion = dispositivo().getDefaultConfiguration();
+        Rectangle pantalla = configuracion.getBounds();
+        Insets barras = Toolkit.getDefaultToolkit().getScreenInsets(configuracion);
+        return new Rectangle(pantalla.x + barras.left, pantalla.y + barras.top,
+                pantalla.width - barras.left - barras.right, pantalla.height - barras.top - barras.bottom);
+    }
+
+    // Toma el tamaño REAL del panel en este momento (la ventana puede no medir exactamente lo pedido)
+    private void sincronizarTamanio() {
+        if (panel.getWidth() > 0 && panel.getHeight() > 0) {
+            escalado.setTamanioReal(panel.getWidth(), panel.getHeight());
+        }
+    }
+
+    // Dibuja el juego agrandado y centrado, con franjas negras si sobra lugar, y encima la capa del brillo
     private void dibujarCuadro(Graphics g) {
+        sincronizarTamanio();
         Graphics2D g2 = (Graphics2D) g.create();
+        g2.setColor(Color.BLACK);
+        g2.fillRect(0, 0, panel.getWidth(), panel.getHeight());
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        int anchoPantalla = panel.getWidth();
-        int altoPantalla = panel.getHeight();
-        g2.scale(anchoPantalla / (double) ANCHO_LOGICO, altoPantalla / (double) ALTO_LOGICO);
+        g2.translate(escalado.getDesplazamientoX(), escalado.getDesplazamientoY());
+        g2.scale(escalado.getFactor(), escalado.getFactor());
+        g2.clipRect(0, 0, ANCHO_LOGICO, ALTO_LOGICO);
         motor.dibujar(g2);
         g2.dispose();
-        dibujarBrillo(g, anchoPantalla, altoPantalla);
+        dibujarBrillo(g);
     }
 
-    // Brillo menor a 100: capa negra translúcida. Mayor a 100: capa blanca muy suave.
-    private void dibujarBrillo(Graphics g, int ancho, int alto) {
+    // Brillo menor a 100: capa negra translúcida. Mayor a 100: capa blanca muy suave. Solo sobre el juego, no sobre las franjas.
+    private void dibujarBrillo(Graphics g) {
         int porcentaje = opciones.getBrilloPorcentaje();
         if (porcentaje == 100) {
             return;
@@ -160,7 +249,8 @@ public class VentanaJuego {
             g2.setColor(Color.WHITE);
             g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (porcentaje - 100) / 100f * 0.8f));
         }
-        g2.fillRect(0, 0, ancho, alto);
+        g2.fillRect(escalado.getDesplazamientoX(), escalado.getDesplazamientoY(),
+                escalado.getAnchoDibujado(), escalado.getAltoDibujado());
         g2.dispose();
     }
 
@@ -168,8 +258,8 @@ public class VentanaJuego {
     private void tick() {
         if (opciones.getResolucion() != resolucionAplicada) {
             aplicarResolucion();
-            panel.requestFocusInWindow();
         }
+        sincronizarTamanio();
         long ahora = System.nanoTime();
         double delta = (ahora - ultimo) / 1e9;
         ultimo = ahora;
@@ -187,6 +277,9 @@ public class VentanaJuego {
 
         if (motor.estaTerminado()) {
             reloj.stop();
+            if (enPantallaCompleta) {
+                dispositivo().setFullScreenWindow(null);
+            }
             marco.dispose();
             System.exit(0);
         }

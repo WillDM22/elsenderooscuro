@@ -31,7 +31,7 @@ Esta guía te prepara para exponer **El Sendero Oscuro** y responder preguntas d
 3. El guardado es un archivo de texto con una línea `CLAVE=valor` por dato. Los eventos narrativos se leen de otro archivo, así que se pueden agregar sin tocar el código.
 
 **Minuto 5–7: decisiones de diseño que puedo defender.**
-- Separé la lógica (sin Swing) de las pantallas: por eso pude hacer 382 pruebas automáticas sin abrir ventana.
+- Separé la lógica (sin Swing) de las pantallas: por eso pude hacer 395 pruebas automáticas sin abrir ventana.
 - Herencia donde hay comportamiento distinto (`Habilidad`, `Enemigo` y `Minijuego` son abstractas), pero solo donde hay un motivo. Y composición donde no lo hay: `Jugador` y `Enemigo` **tienen** un `EstadoVeneno`, no heredan de una clase común.
 - Si el archivo de guardado está dañado, el juego no se rompe: `cargar` devuelve `null`.
 - Si faltan los `.png`, el juego dibuja los sprites con Graphics2D: nunca falla por una imagen.
@@ -246,7 +246,7 @@ Parte un texto por un separador devolviendo un trozo por vez. `String.split` dev
 | Archivo dañado | `cargar` devuelve `null`, el menú avisa |
 | Minijuegos | Barra, ráfaga y anillo al azar; Destreza los facilita; el nivel (enemigos derrotados, tope 12) los endurece |
 | Estados del combate | ELECCION, APUNTANDO, RESULTADO, TURNO_ENEMIGO, VICTORIA, DERROTA, HUIDA |
-| Pruebas | 382 comprobaciones + verificador del kit (36/23/22) |
+| Pruebas | 395 comprobaciones + verificador del kit (36/23/22) |
 
 ---
 
@@ -271,7 +271,7 @@ Con `if` encadenados. `values()[i]` devolvería un arreglo, y la cátedra lo pro
 `Combate` recibe el `Random` por constructor. En las pruebas se le pasa un `Random` que siempre devuelve el mismo número, así el minijuego que sale (y si la huida funciona) es siempre el esperado y las pruebas son **determinísticas**.
 
 **¿Por qué una ventana propia (`VentanaJuego`)?**
-La `Ventana` del kit tiene tamaño fijo. Para cambiar la resolución en vivo hacía falta una ventana que escale el dibujo; el juego sigue dibujando en 1024×640 y `Escalado` convierte las coordenadas del mouse.
+La `Ventana` del kit tiene tamaño fijo. Para cambiar el modo de pantalla en vivo (Normal, Grande, Pantalla completa) hacía falta una ventana que escale el dibujo; el juego sigue dibujando en 1024×640, se agranda con el mismo factor en ancho y alto (nunca se estira, sobran franjas negras) y `Escalado` convierte las coordenadas del mouse.
 
 **¿Y el brillo?**
 Es una capa semitransparente (negra o blanca) dibujada **encima** del juego: no toca el monitor ni cada pantalla.

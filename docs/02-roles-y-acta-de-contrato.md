@@ -34,7 +34,7 @@ Una fila por cada clase que un módulo le pide a otro, con su constructor y los 
 | `Partida` | C | `Partida(semilla, jugador, ruta, diario, derrotados, eventos)` y `Partida.nueva(semilla, eventos, clase)` | `getAdyacentes`, `getAdyacentesOrdenados`, `puedeMoverA`, `moverA`, `registrar`, `getUltimosRegistros`, `getRuta`, `crearEnemigoDeNodo`, `crearEventoDeNodo`, `crearEventoCofre`, `sumarDerrotado` |
 | `EventoNarrativo`, `OpcionEvento`, `EfectoEvento` | C | `(titulo, relato, opciones)`, `(texto, resultado, efectos)`, `(tipo, valor, texto)` | `getOpcion`, `puedeElegir`, `aplicar`, `getEmboscada` |
 | `GestorArchivos` | C | `GestorArchivos(carpeta)` | `guardar`, `cargar`, `existeGuardado`, `borrarGuardado`, `guardarOpciones`, `cargarOpciones`, `cargarEventos`, `interpretarEventos` |
-| `Opciones` | D | `Opciones()` | `getResolucion`, `getBrillo`, `getTexto`, `cambiarResolucion`, `cambiarBrillo`, `cambiarTexto`, `getEscalaTexto` |
+| `Opciones` | D | `Opciones()` | `getResolucion`, `esPantallaCompleta`, `getFactorVentana`, `getNombreResolucion`, `getBrillo`, `getTexto`, `cambiarResolucion`, `cambiarBrillo`, `cambiarTexto`, `getEscalaTexto` |
 | `Recursos` | D | `Recursos(carpetaDatos, carpetaAssets)` | `getArchivos`, `getSprites`, `getEventos`, `getOpciones`, `aplicarOpciones`, `getFondoBosque`, `getFondoMapa` |
 | `GestorSprites` | D | `GestorSprites(carpetaAssets)` | `obtener(nombre, escala)`, `dibujar`, `tieneArchivo` |
 | Escenas | D | `EscenaMenu(recursos)`, `EscenaClases(recursos)`, `EscenaOpciones(recursos, anterior)`, `EscenaMapa(recursos, partida, autoguardar)`, `EscenaEvento(recursos, partida, evento, esCofre)`, `EscenaCombate(recursos, partida, enemigo, esJefe)`, `EscenaFin(recursos, partida, victoria)` | `actualizar(dt)`, `dibujar(g)` |

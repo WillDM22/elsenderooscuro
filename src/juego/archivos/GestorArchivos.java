@@ -147,7 +147,7 @@ public class GestorArchivos {
     public boolean guardarOpciones(Opciones opciones) {
         new File(carpeta).mkdirs();
         try (PrintWriter salida = new PrintWriter(new OutputStreamWriter(new FileOutputStream(rutaOpciones()), "UTF-8"))) {
-            salida.println("RESOLUCION=" + opciones.getResolucion());
+            salida.println("PANTALLA=" + opciones.getResolucion());
             salida.println("BRILLO=" + opciones.getBrillo());
             salida.println("TEXTO=" + opciones.getTexto());
             return !salida.checkError();
@@ -164,7 +164,7 @@ public class GestorArchivos {
             return opciones;
         }
         try {
-            opciones.setResolucion(Integer.parseInt(valorDe(lineas, "RESOLUCION")));
+            opciones.setResolucion(Integer.parseInt(valorDe(lineas, "PANTALLA")));
         } catch (RuntimeException e) {
             // valor ausente, no numérico o fuera de rango: se queda el de por defecto
         }

@@ -3722,7 +3722,7 @@ Para cada línea `REGISTRO=id|texto`: se busca la **primera** barra `|` con `ind
 public boolean guardarOpciones(Opciones opciones) {
     new File(carpeta).mkdirs();
     try (PrintWriter salida = new PrintWriter(new OutputStreamWriter(new FileOutputStream(rutaOpciones()), "UTF-8"))) {
-        salida.println("RESOLUCION=" + opciones.getResolucion());
+        salida.println("PANTALLA=" + opciones.getResolucion());
         salida.println("BRILLO=" + opciones.getBrillo());
         salida.println("TEXTO=" + opciones.getTexto());
         return !salida.checkError();
@@ -3740,7 +3740,7 @@ public Opciones cargarOpciones() {
         return opciones;
     }
     try {
-        opciones.setResolucion(Integer.parseInt(valorDe(lineas, "RESOLUCION")));
+        opciones.setResolucion(Integer.parseInt(valorDe(lineas, "PANTALLA")));
     } catch (RuntimeException e) {
         // valor ausente, no numérico o fuera de rango: se queda el de por defecto
     }
@@ -3758,7 +3758,7 @@ public Opciones cargarOpciones() {
 }
 ```
 
-- `guardarOpciones` escribe tres líneas (`RESOLUCION=`, `BRILLO=`, `TEXTO=`) con el mismo esquema que el guardado de la partida.
+- `guardarOpciones` escribe tres líneas (`PANTALLA=`, `BRILLO=`, `TEXTO=`) con el mismo esquema que el guardado de la partida.
 - `cargarOpciones` es **tolerante campo por campo**: parte de un `Opciones` con los valores por defecto y trata de leer cada línea **dentro de su propio `try/catch`**. Si una línea falta, no es un número o tiene un valor fuera de rango (los `set...` de `Opciones` lanzan `IllegalArgumentException`), **solo esa opción** se queda en su valor por defecto y las demás se conservan. Un archivo de opciones roto nunca rompe el juego.
 
 ### 7.5 Leer los eventos (`eventos.txt`)
@@ -4257,7 +4257,7 @@ public class Main {
 }
 ```
 
-Crea los recursos (que leen también `opciones.txt`) y abre **nuestra propia ventana** (`VentanaJuego`, ver 9.11) con el menú como escena inicial. Se hizo una ventana propia porque la `Ventana` del kit tiene un tamaño fijo y no puede cambiar de resolución ni aplicar brillo.
+Crea los recursos (que leen también `opciones.txt`) y abre **nuestra propia ventana** (`VentanaJuego`, ver 9.11) con el menú como escena inicial. Se hizo una ventana propia porque la `Ventana` del kit tiene un tamaño fijo y no puede cambiar de modo de pantalla ni aplicar brillo.
 
 ## 10. El motor del kit (lo mínimo que hay que saber)
 
@@ -4830,7 +4830,7 @@ private void empezar() {
 
 ### 9.10 `EscenaOpciones` y `Opciones`
 
-La pantalla de opciones permite cambiar **resolución**, **brillo** y **tamaño del texto**. `Opciones` es la clase que guarda esos tres valores.
+La pantalla de opciones permite cambiar el **modo de pantalla** (la fila se llama "Resolución"), el **brillo** y el **tamaño del texto**. `Opciones` es la clase que guarda esos tres valores.
 
 ```java
 public class Opciones {
@@ -4852,6 +4852,39 @@ public class Opciones {
 ```
 
 ```java
+public static final int PANTALLA_NORMAL = 0;
+public static final int PANTALLA_GRANDE = 1;
+public static final int PANTALLA_COMPLETA = 2;
+```
+
+```java
+public boolean esPantallaCompleta() {
+    return resolucion == PANTALLA_COMPLETA;
+}
+```
+
+```java
+public double getFactorVentana() {
+    if (resolucion == PANTALLA_GRANDE) {
+        return 1.25;
+    }
+    return 1.0;
+}
+```
+
+```java
+public String getNombreResolucion() {
+    if (resolucion == PANTALLA_NORMAL) {
+        return "Normal 1024x640";
+    }
+    if (resolucion == PANTALLA_GRANDE) {
+        return "Grande 1280x800";
+    }
+    return "Pantalla completa";
+}
+```
+
+```java
 public void cambiarResolucion(int delta) {
     resolucion = limitar(resolucion + delta, CANTIDAD_RESOLUCIONES);
 }
@@ -4863,7 +4896,9 @@ private static int limitar(int valor, int cantidad) {
 }
 ```
 
-- Cada opción es un **número de posición** (0, 1, 2...) dentro de una lista corta de valores posibles: resoluciones 1024×640, 1280×800 y 1536×960 (siempre la proporción 16:10 del juego), brillo 70/85/100/115 % y texto Pequeño/Normal/Grande (0,9 / 1,0 / 1,15).
+- Cada opción es un **número de posición** (0, 1, 2...) dentro de una lista corta de valores posibles: tres modos de pantalla (0 = Normal, 1 = Grande, 2 = Pantalla completa), brillo 70/85/100/115 % y texto Pequeño/Normal/Grande (0,9 / 1,0 / 1,15).
+- **Los tres modos de pantalla:** *Normal* es una ventana de 1024×640 (el tamaño propio del juego); *Grande* es una ventana 1,25 veces más grande (1280×800, `getFactorVentana()` devuelve 1,25); *Pantalla completa* ocupa todo el monitor. En pantalla completa `getFactorVentana()` no se usa: manda el tamaño del monitor, y `esPantallaCompleta()` le avisa a la ventana que tiene que cambiar de modo.
+- Las constantes `PANTALLA_NORMAL`, `PANTALLA_GRANDE` y `PANTALLA_COMPLETA` les ponen **nombre** a los números 0, 1 y 2: `resolucion == PANTALLA_GRANDE` se lee solo, `resolucion == 1` no.
 - `cambiarResolucion(delta)` suma +1 o -1 y **se detiene en los extremos** (`limitar`): no da la vuelta. Los `set...` validan el rango y lanzan `IllegalArgumentException`.
 - Es **un solo objeto compartido**: la pantalla lo cambia y la ventana lo lee en cada cuadro. Esto evita tener que avisarle a la ventana cuando algo cambia.
 
@@ -4887,34 +4922,100 @@ private void cambiar(int delta) {
 
 ### 9.11 `VentanaJuego` y `Escalado`
 
-El kit tiene una `Ventana` de tamaño fijo. Para poder cambiar la resolución se escribió **una ventana propia** (`VentanaJuego`) que sigue usando el `Motor` del kit para el bucle del juego. **El juego siempre dibuja en 1024×640**; la ventana solo **agranda** el dibujo.
+El kit tiene una `Ventana` de tamaño fijo. Para poder cambiar el modo de pantalla se escribió **una ventana propia** (`VentanaJuego`) que sigue usando el `Motor` del kit para el bucle del juego. **El juego siempre dibuja en 1024×640**; la ventana solo lo **agranda**, y lo hace con **el mismo factor en ancho y alto**: nunca se estira. Si el monitor no tiene la proporción 16:10 del juego (por ejemplo, un monitor Full HD 16:9 en pantalla completa), sobran **franjas negras** a los costados y el juego queda centrado.
+
+**Qué problemas resuelve esta versión** (la primera tenía tres defectos):
+1. Las ventanas eran de tamaño fijo y en muchas pantallas (laptops, o Windows con zoom 125 % / 150 %) **no entraban**. Ahora el tamaño se **limita a lo que entra** (`limitarFactor`).
+2. El dibujo se estiraba con la **ventana real** pero el mouse usaba el tamaño **pedido**, y si no coincidían los clicks quedaban desfasados. Ahora los dos usan el **tamaño real del panel en ese momento** (`sincronizarTamanio`).
+3. No había modo de pantalla completa.
 
 ```java
 private void aplicarResolucion() {
     resolucionAplicada = opciones.getResolucion();
-    panel.setPreferredSize(new Dimension(opciones.getAncho(), opciones.getAlto()));
-    escalado.setTamanioReal(opciones.getAncho(), opciones.getAlto());
+    if (enPantallaCompleta) {
+        dispositivo().setFullScreenWindow(null);
+        enPantallaCompleta = false;
+    }
+    if (marco.isDisplayable()) {
+        marco.dispose();
+    }
+    boolean completa = opciones.esPantallaCompleta();
+    marco.setUndecorated(completa);
+    marco.setResizable(false);
+    if (completa) {
+        mostrarEnPantallaCompleta();
+    } else {
+        mostrarEnVentana();
+    }
+    marco.toFront();
+    panel.requestFocusInWindow();
+}
+```
+
+```java
+private void mostrarEnVentana() {
+    double deseado = opciones.getFactorVentana();
+    fijarTamanioPanel(deseado);
     marco.pack();
-    marco.setLocationRelativeTo(null);
+    Insets bordes = marco.getInsets();
+    Rectangle util = areaUtil();
+    double factor = escalado.limitarFactor(util.width - bordes.left - bordes.right,
+            util.height - bordes.top - bordes.bottom, deseado);
+    if (factor < deseado) {
+        fijarTamanioPanel(factor);
+        marco.pack();
+    }
+    marco.setLocation(util.x + (util.width - marco.getWidth()) / 2, util.y + (util.height - marco.getHeight()) / 2);
+    marco.setVisible(true);
+}
+```
+
+```java
+private void mostrarEnPantallaCompleta() {
+    GraphicsDevice dispositivo = dispositivo();
+    Rectangle pantalla = dispositivo.getDefaultConfiguration().getBounds();
+    panel.setPreferredSize(new Dimension(pantalla.width, pantalla.height));
+    marco.pack();
+    marco.setBounds(pantalla);
+    if (dispositivo.isFullScreenSupported()) {
+        dispositivo.setFullScreenWindow(marco);
+        enPantallaCompleta = true;
+    }
+    marco.setVisible(true);
+}
+```
+
+- `aplicarResolucion` se llama al abrir y cada vez que cambia la opción. En cada cuadro (`tick`) se compara el modo de las opciones con el aplicado: **el cambio se ve al instante**. Si estaba en pantalla completa, primero sale (`setFullScreenWindow(null)`). Después hace `dispose()` y `setUndecorated(...)`: Swing **no deja** cambiar entre ventana con bordes y ventana sin bordes mientras la ventana está abierta, así que se cierra y se vuelve a mostrar. El `Motor`, la escena y la partida siguen siendo los mismos: **el juego no se reinicia**.
+- `mostrarEnVentana`: pide el tamaño deseado (1,0 o 1,25 veces el juego) y hace `pack()` para que Swing cree la ventana. Recién ahí `getInsets()` dice cuánto ocupan los bordes y la barra de título. Con eso y el área útil de la pantalla (sin la barra de tareas) calcula el factor que **entra**; si es menor al deseado, achica el panel y vuelve a hacer `pack()`. Por último la centra.
+- `mostrarEnPantallaCompleta`: la ventana pasa a ser sin bordes y del tamaño del monitor. Se usa `setFullScreenWindow` si el sistema lo soporta; si no, queda una ventana sin bordes del tamaño de la pantalla. En los dos casos del dibujo se encarga `Escalado`.
+
+```java
+private void sincronizarTamanio() {
+    if (panel.getWidth() > 0 && panel.getHeight() > 0) {
+        escalado.setTamanioReal(panel.getWidth(), panel.getHeight());
+    }
 }
 ```
 
 ```java
 private void dibujarCuadro(Graphics g) {
+    sincronizarTamanio();
     Graphics2D g2 = (Graphics2D) g.create();
+    g2.setColor(Color.BLACK);
+    g2.fillRect(0, 0, panel.getWidth(), panel.getHeight());
     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
     g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-    int anchoPantalla = panel.getWidth();
-    int altoPantalla = panel.getHeight();
-    g2.scale(anchoPantalla / (double) ANCHO_LOGICO, altoPantalla / (double) ALTO_LOGICO);
+    g2.translate(escalado.getDesplazamientoX(), escalado.getDesplazamientoY());
+    g2.scale(escalado.getFactor(), escalado.getFactor());
+    g2.clipRect(0, 0, ANCHO_LOGICO, ALTO_LOGICO);
     motor.dibujar(g2);
     g2.dispose();
-    dibujarBrillo(g, anchoPantalla, altoPantalla);
+    dibujarBrillo(g);
 }
 ```
 
 ```java
-private void dibujarBrillo(Graphics g, int ancho, int alto) {
+private void dibujarBrillo(Graphics g) {
     int porcentaje = opciones.getBrilloPorcentaje();
     if (porcentaje == 100) {
         return;
@@ -4927,23 +5028,27 @@ private void dibujarBrillo(Graphics g, int ancho, int alto) {
         g2.setColor(Color.WHITE);
         g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (porcentaje - 100) / 100f * 0.8f));
     }
-    g2.fillRect(0, 0, ancho, alto);
+    g2.fillRect(escalado.getDesplazamientoX(), escalado.getDesplazamientoY(),
+            escalado.getAnchoDibujado(), escalado.getAltoDibujado());
     g2.dispose();
 }
 ```
 
-- `aplicarResolucion`: cambia el tamaño preferido del panel y llama a `pack()` para que la ventana se reacomode. En cada cuadro (`tick`) se compara la resolución de las opciones con la aplicada y, si cambió, se aplica: **el cambio se ve al instante**.
-- `dibujarCuadro`: `g2.scale(...)` agranda todo el dibujo del juego según el tamaño real de la ventana, **sin cambiar una sola línea de las pantallas**.
-- `dibujarBrillo`: el brillo no es un ajuste del monitor: es una **capa encima** del dibujo. Menor a 100 % → una capa **negra** translúcida; mayor → una capa **blanca** muy suave. (`AlphaComposite` controla la transparencia.)
+- `sincronizarTamanio`: copia el tamaño **actual** del panel a `Escalado` (si todavía es 0 porque la ventana no se mostró, no hace nada). Se llama antes de dibujar y en cada `tick`, así el mouse siempre usa los mismos números que el dibujo.
+- `dibujarCuadro`: pinta todo de negro (esas serán las franjas), **traslada** el origen a la esquina del juego (`translate`), agranda con **un solo factor** (`scale(f, f)`) y recorta con `clipRect` al rectángulo 1024×640 para que nada se dibuje sobre las franjas. **No cambia una sola línea de las pantallas.**
+- `dibujarBrillo`: el brillo no es un ajuste del monitor: es una **capa encima** del dibujo. Menor a 100 % → una capa **negra** translúcida; mayor → una capa **blanca** muy suave. (`AlphaComposite` controla la transparencia.) Solo cubre el rectángulo del juego, no las franjas negras.
 
 ```java
-public class Escalado {
+public final class Escalado {
 
     // Atributos
     private final int anchoLogico;
     private final int altoLogico;
     private int anchoReal;
     private int altoReal;
+    private double factor = 1.0;
+    private int desplazamientoX = 0;
+    private int desplazamientoY = 0;
 
     // Constructor: el tamaño real empieza igual al lógico
     public Escalado(int anchoLogico, int altoLogico) {
@@ -4952,45 +5057,74 @@ public class Escalado {
         }
         this.anchoLogico = anchoLogico;
         this.altoLogico = altoLogico;
-        this.anchoReal = anchoLogico;
-        this.altoReal = altoLogico;
+        setTamanioReal(anchoLogico, altoLogico);
     }
 
+    // Se llama con el tamaño ACTUAL del panel. Calcula el factor (el menor de los dos que entran) y las franjas.
     public void setTamanioReal(int ancho, int alto) {
         if (ancho <= 0 || alto <= 0) {
             throw new IllegalArgumentException("el tamaño real debe ser positivo");
         }
         anchoReal = ancho;
         altoReal = alto;
+        factor = Math.min((double) ancho / anchoLogico, (double) alto / altoLogico);
+        desplazamientoX = (ancho - getAnchoDibujado()) / 2;
+        desplazamientoY = (alto - getAltoDibujado()) / 2;
     }
 
-    // Cuánto se agranda el dibujo en cada eje
-    public double getFactorX() {
-        return (double) anchoReal / anchoLogico;
+    // Cuánto se agranda el dibujo (igual en los dos ejes)
+    public double getFactor() {
+        return factor;
     }
 
-    public double getFactorY() {
-        return (double) altoReal / altoLogico;
+    // Tamaño en píxeles reales del rectángulo donde se dibuja el juego
+    public int getAnchoDibujado() {
+        return (int) Math.round(anchoLogico * factor);
     }
 
-    // De píxel de la ventana a coordenada del juego
+    public int getAltoDibujado() {
+        return (int) Math.round(altoLogico * factor);
+    }
+
+    // Franja negra de la izquierda y de arriba (la de la derecha y la de abajo miden lo mismo)
+    public int getDesplazamientoX() {
+        return desplazamientoX;
+    }
+
+    public int getDesplazamientoY() {
+        return desplazamientoY;
+    }
+
+    // De píxel de la pantalla a coordenada del juego (fuera del juego da valores negativos o mayores al tamaño lógico)
     public int aLogicoX(int xReal) {
-        return (int) Math.round(xReal / getFactorX());
+        return (int) Math.round((xReal - desplazamientoX) / factor);
     }
 
     public int aLogicoY(int yReal) {
-        return (int) Math.round(yReal / getFactorY());
+        return (int) Math.round((yReal - desplazamientoY) / factor);
+    }
+
+    // Factor más grande que ENTRA en el espacio disponible, sin pasar del deseado.
+    // Sirve para que una ventana no sea más grande que la pantalla.
+    public double limitarFactor(int anchoDisponible, int altoDisponible, double deseado) {
+        double entraEnAncho = (double) anchoDisponible / anchoLogico;
+        double entraEnAlto = (double) altoDisponible / altoLogico;
+        return Math.min(deseado, Math.min(entraEnAncho, entraEnAlto));
     }
 }
 ```
 
-**`Escalado` resuelve el mouse.** Si la ventana mide 1536×960 pero el juego "cree" que mide 1024×640, un click en el píxel real (768, 480) debe tratarse como (512, 320). `aLogicoX` y `aLogicoY` dividen por el **factor de escala** (`anchoReal / anchoLogico`) para volver a coordenadas del juego. Está en una clase aparte, sin ninguna dependencia de Swing, para poder **probarla** (`pruebasOpciones` la verifica con números exactos).
+**`Escalado` resuelve las cuentas.** Está en una clase aparte, **sin ninguna dependencia de Swing**, para poder **probarla** (`pruebasOpciones` la verifica con números exactos, incluso para un monitor Full HD, uno ultraancho y uno cuadrado).
+- `setTamanioReal` calcula el **factor** como el **menor** de `anchoReal / anchoLogico` y `altoReal / altoLogico`: el eje más chico es el que manda y el otro sobra. Ejemplo, Full HD (1920×1080): `1920/1024 = 1,875` y `1080/640 = 1,6875` → factor **1,6875**; el juego mide 1728×1080 y a cada lado quedan `(1920 − 1728) / 2 = 96` píxeles negros.
+- `aLogicoX` y `aLogicoY` hacen el camino inverso para el mouse: **primero restan la franja** (`desplazamientoX`) y **después dividen por el factor**. Un click en el centro de la pantalla (960, 540) da el centro del juego (512, 320). Un click dentro de una franja da una coordenada negativa o mayor a 1024: **fuera del juego**, así que no toca ningún botón.
+- `limitarFactor` devuelve el factor más grande que **entra** en un espacio, sin pasar del deseado: es lo que usa la ventana para no ser más grande que la pantalla.
+- La clase es `final` porque el constructor llama a `setTamanioReal` (un método público): al no poder heredarse, nadie puede reemplazarlo por algo que se ejecute con el objeto a medio construir.
 
 ---
 
 ## 11. `PruebaJuego`: cómo se prueba todo sin abrir la ventana
 
-`juego/pruebas/PruebaJuego.java` ejecuta **382 comprobaciones** automáticas. Se corre con `java -cp out juego.pruebas.PruebaJuego`. Imprime solo las que fallan y al final el total.
+`juego/pruebas/PruebaJuego.java` ejecuta **395 comprobaciones** automáticas. Se corre con `java -cp out juego.pruebas.PruebaJuego`. Imprime solo las que fallan y al final el total.
 
 La función clave es:
 

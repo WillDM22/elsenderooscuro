@@ -25,7 +25,7 @@ public class EscenaOpciones extends Escena {
 
     // Constantes de dibujo
     private static final int ANCHO = 1024;
-    private static final int X_FILA = 200;
+    private static final int X_FILA = 170;
     private static final int Y_FILA = 250;
     private static final int SEPARACION = 70;
 

@@ -20,7 +20,14 @@ public class Opciones {
     private int brillo = BRILLO_INICIAL;
     private int texto = TEXTO_INICIAL;
 
-    // Resolución: tres tamaños de ventana con la misma proporción 16:10 que el juego
+    // Resolución (modo de pantalla): tres modos
+    //   0 = Normal (ventana de 1024 x 640, el tamaño propio del juego)
+    //   1 = Grande (ventana 1,25 veces más grande: 1280 x 800)
+    //   2 = Pantalla completa (ocupa toda la pantalla; el juego se agranda SIN deformarse y sobran barras negras)
+    public static final int PANTALLA_NORMAL = 0;
+    public static final int PANTALLA_GRANDE = 1;
+    public static final int PANTALLA_COMPLETA = 2;
+
     public int getResolucion() {
         return resolucion;
     }
@@ -30,28 +37,26 @@ public class Opciones {
         resolucion = nueva;
     }
 
-    public int getAncho() {
-        if (resolucion == 0) {
-            return 1024;
-        }
-        if (resolucion == 1) {
-            return 1280;
-        }
-        return 1536;
+    public boolean esPantallaCompleta() {
+        return resolucion == PANTALLA_COMPLETA;
     }
 
-    public int getAlto() {
-        if (resolucion == 0) {
-            return 640;
+    // Cuántas veces se agranda el juego en los modos con ventana (en pantalla completa no se usa: manda el tamaño de la pantalla)
+    public double getFactorVentana() {
+        if (resolucion == PANTALLA_GRANDE) {
+            return 1.25;
         }
-        if (resolucion == 1) {
-            return 800;
-        }
-        return 960;
+        return 1.0;
     }
 
     public String getNombreResolucion() {
-        return getAncho() + " x " + getAlto();
+        if (resolucion == PANTALLA_NORMAL) {
+            return "Normal 1024x640";
+        }
+        if (resolucion == PANTALLA_GRANDE) {
+            return "Grande 1280x800";
+        }
+        return "Pantalla completa";
     }
 
     // Brillo: 70%, 85%, 100% o 115%

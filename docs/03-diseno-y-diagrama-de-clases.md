@@ -249,7 +249,7 @@ El recorrido de **un turno del jugador** es:
 - **Guardar** (`GestorArchivos.guardar`): con un `PrintWriter` escribe una línea `CLAVE=valor` por dato: semilla, clase, atributos, vida, maná, oro, nodo actual, hechizos, ruta y una línea `REGISTRO=` por cada entrada del diario.
 - **No se guarda el grafo**: el mapa depende solo de la semilla (`new Random(semilla)`), así que al cargar se vuelve a generar idéntico.
 - **Cargar** (`GestorArchivos.cargar`): con un `BufferedReader` lee todas las líneas a una `ListaEnlazada<String>`, busca cada clave, reconstruye el `Jugador`, las dos pilas y la `Partida`. Se valida que la ruta sea un camino real del grafo; si **algo** falla (falta una clave, un número mal escrito, una clase o un hechizo inventado, más de 4 hechizos) devuelve `null` y el menú avisa "archivo dañado" sin romper el juego.
-- **Opciones** (`guardarOpciones` / `cargarOpciones`): `datos/opciones.txt` guarda resolución, brillo y tamaño de texto. Al cargar, cada línea mala vuelve a su valor por defecto sin afectar a las demás.
+- **Opciones** (`guardarOpciones` / `cargarOpciones`): `datos/opciones.txt` guarda el modo de pantalla (`PANTALLA=`), brillo y tamaño de texto. Al cargar, cada línea mala vuelve a su valor por defecto sin afectar a las demás.
 - **Eventos** (`cargarEventos`): lee `datos/eventos.txt`. Cada evento descartado por estar mal escrito no afecta a los demás; si no queda ninguno (o falta el archivo) se usan dos eventos de respaldo.
 
 Formato de `datos/guardado.txt`:
@@ -277,7 +277,7 @@ REGISTRO=6|Piso 2: llegas a Evento.
 Formato de `datos/opciones.txt`:
 
 ```
-RESOLUCION=0
+PANTALLA=0
 BRILLO=2
 TEXTO=1
 ```
@@ -308,5 +308,5 @@ OPCION|texto del botón|EFECTO:valor;EFECTO:valor|texto del resultado
 | Minijuegos de precisión estilo Undertale (barra, ráfaga, anillo) con efecto de la Destreza y dificultad creciente | `Minijuego`, `BarraPrecision`, `MinijuegoRafaga`, `MinijuegoAnillo`, `Dificultad`, `EscenaCombate.dibujarMinijuego` |
 | Acciones de combate estilo Pokémon (Luchar, Magia, Defender, Huir) y energía además del maná | `Combate`, `Jugador`, `HabilidadArma`, `HabilidadPunos` |
 | Variedad de enemigos | `Esqueleto`, `Lobo`, `Goblin`, `Arana`, `Brujo`, `Espectro`, `Golem`, `ReyOscuro`, `FabricaEnemigos` |
-| Opciones: resolución, brillo y tamaño del texto | `Opciones`, `EscenaOpciones`, `VentanaJuego`, `Escalado` |
+| Opciones: modo de pantalla, brillo y tamaño del texto | `Opciones`, `EscenaOpciones`, `VentanaJuego`, `Escalado` |
 | Eventos con 2 o 3 opciones que modifican stats o dan habilidades | `datos/eventos.txt`, `EventoNarrativo`, `EfectoEvento` |

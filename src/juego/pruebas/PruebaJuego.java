@@ -834,15 +834,19 @@ public class PruebaJuego {
     // Opciones y ventana
     private static void pruebasOpciones() {
         Opciones o = new Opciones();
-        comprobar("opciones: valores por defecto 1024x640, brillo 100%, texto normal",
-                o.getAncho() == 1024 && o.getAlto() == 640 && o.getBrilloPorcentaje() == 100 && o.getEscalaTexto() == 1.0);
+        comprobar("opciones: valores por defecto ventana normal, brillo 100%, texto normal",
+                o.getResolucion() == 0 && !o.esPantallaCompleta() && o.getFactorVentana() == 1.0
+                && o.getNombreResolucion().equals("Normal 1024x640") && o.getBrilloPorcentaje() == 100 && o.getEscalaTexto() == 1.0);
         o.cambiarResolucion(1);
-        comprobar("opciones: resolución 1280x800", o.getAncho() == 1280 && o.getAlto() == 800 && o.getNombreResolucion().equals("1280 x 800"));
+        comprobar("opciones: modo Grande (1,25 veces, 1280x800)",
+                o.getResolucion() == 1 && !o.esPantallaCompleta() && o.getFactorVentana() == 1.25 && o.getNombreResolucion().equals("Grande 1280x800"));
         o.cambiarResolucion(1);
+        comprobar("opciones: el tercer modo es pantalla completa", o.getResolucion() == 2 && o.esPantallaCompleta()
+                && o.getNombreResolucion().equals("Pantalla completa"));
         o.cambiarResolucion(1);
-        comprobar("opciones: la resolución se detiene en el último valor (1536x960)", o.getResolucion() == 2 && o.getAncho() == 1536 && o.getAlto() == 960);
+        comprobar("opciones: la resolución se detiene en el último valor (pantalla completa)", o.getResolucion() == 2);
         o.cambiarResolucion(-5);
-        comprobar("opciones: y en el primero", o.getResolucion() == 0);
+        comprobar("opciones: y en el primero", o.getResolucion() == 0 && !o.esPantallaCompleta());
         o.cambiarBrillo(-2);
         comprobar("opciones: brillo mínimo 70%", o.getBrilloPorcentaje() == 70);
         o.cambiarBrillo(10);
@@ -870,18 +874,48 @@ public class PruebaJuego {
         comprobar("opciones: guardar devuelve true", gestor.guardarOpciones(elegidas));
         Opciones leidas = gestor.cargarOpciones();
         comprobar("opciones: se leen igual que se guardaron", leidas.getResolucion() == 2 && leidas.getBrillo() == 0 && leidas.getTexto() == 2);
-        escribirArchivo(gestor.rutaOpciones(), "RESOLUCION=abc\nBRILLO=77\nTEXTO=0\n");
+        escribirArchivo(gestor.rutaOpciones(), "PANTALLA=abc\nBRILLO=77\nTEXTO=0\n");
         Opciones rotas = gestor.cargarOpciones();
         comprobar("opciones: los valores malos vuelven al de por defecto y los buenos se conservan",
                 rotas.getResolucion() == 0 && rotas.getBrillo() == 2 && rotas.getTexto() == 0);
+        escribirArchivo(gestor.rutaOpciones(), "RESOLUCION=2\nBRILLO=0\nTEXTO=2\n");
+        Opciones viejas = gestor.cargarOpciones();
+        comprobar("opciones: un archivo de la versión vieja (clave RESOLUCION) no activa la pantalla completa por error",
+                viejas.getResolucion() == 0 && viejas.getBrillo() == 0 && viejas.getTexto() == 2);
 
-        // Escalado del mouse
+        // Escalado: el juego se agranda igual en ancho y alto (sin estirarse) y el mouse hace el camino inverso
         Escalado e = new Escalado(1024, 640);
-        comprobar("escalado: sin cambios, 1 a 1", e.getFactorX() == 1.0 && e.aLogicoX(500) == 500);
-        e.setTamanioReal(1536, 960);
-        comprobar("escalado: en 1536x960 el factor es 1.5", e.getFactorX() == 1.5 && e.getFactorY() == 1.5);
-        comprobar("escalado: el mouse en (1536, 960) es la esquina lógica (1024, 640)", e.aLogicoX(1536) == 1024 && e.aLogicoY(960) == 640);
-        comprobar("escalado: el centro de la ventana es el centro del juego", e.aLogicoX(768) == 512 && e.aLogicoY(480) == 320);
+        comprobar("escalado: sin cambios, 1 a 1 y sin franjas",
+                e.getFactor() == 1.0 && e.getDesplazamientoX() == 0 && e.getDesplazamientoY() == 0 && e.aLogicoX(500) == 500);
+        e.setTamanioReal(1280, 800);
+        comprobar("escalado: en 1280x800 el factor es 1,25 y no hay franjas",
+                e.getFactor() == 1.25 && e.getAnchoDibujado() == 1280 && e.getAltoDibujado() == 800 && e.getDesplazamientoX() == 0);
+        comprobar("escalado: el mouse en (1280, 800) es la esquina lógica (1024, 640)", e.aLogicoX(1280) == 1024 && e.aLogicoY(800) == 640);
+        comprobar("escalado: el centro de la ventana es el centro del juego", e.aLogicoX(640) == 512 && e.aLogicoY(400) == 320);
+
+        e.setTamanioReal(1920, 1080);
+        comprobar("escalado (Full HD): factor 1,6875 y el juego mide 1728x1080 con franjas de 96 px a los costados",
+                e.getFactor() == 1.6875 && e.getAnchoDibujado() == 1728 && e.getAltoDibujado() == 1080
+                && e.getDesplazamientoX() == 96 && e.getDesplazamientoY() == 0);
+        comprobar("escalado (Full HD): no se estira, el dibujo conserva la proporción 16:10",
+                e.getAnchoDibujado() * 10 == e.getAltoDibujado() * 16);
+        comprobar("escalado (Full HD): el centro de la pantalla es el centro del juego", e.aLogicoX(960) == 512 && e.aLogicoY(540) == 320);
+        comprobar("escalado (Full HD): las esquinas del juego son (96, 0) y (1824, 1080)",
+                e.aLogicoX(96) == 0 && e.aLogicoY(0) == 0 && e.aLogicoX(1824) == 1024 && e.aLogicoY(1080) == 640);
+        comprobar("escalado (Full HD): un click en la franja negra cae fuera del juego", e.aLogicoX(10) < 0 && e.aLogicoX(1910) > 1024);
+
+        e.setTamanioReal(1920, 1200);
+        comprobar("escalado (16:10): llena la pantalla, factor 1,875 y sin franjas",
+                e.getFactor() == 1.875 && e.getDesplazamientoX() == 0 && e.getDesplazamientoY() == 0);
+        e.setTamanioReal(2560, 1080);
+        comprobar("escalado (ultraancho): franjas de 416 px, el alto manda", e.getFactor() == 1.6875 && e.getDesplazamientoX() == 416);
+        e.setTamanioReal(1000, 1000);
+        comprobar("escalado (cuadrada): manda el ancho y sobran franjas arriba y abajo",
+                e.getAnchoDibujado() == 1000 && e.getAltoDibujado() == 625 && e.getDesplazamientoX() == 0 && e.getDesplazamientoY() == 187);
+        comprobar("escalado: el factor que entra en 1000x700 con 1,25 deseado es 0,9765625 (manda el ancho)",
+                e.limitarFactor(1000, 700, 1.25) == 0.9765625);
+        comprobar("escalado: si sobra espacio se respeta el factor deseado", e.limitarFactor(2000, 1200, 1.25) == 1.25);
+        comprobar("escalado: si manda el alto (1300x600) el factor es 0,9375", e.limitarFactor(1300, 600, 1.0) == 0.9375);
         try {
             e.setTamanioReal(0, 100);
             comprobar("escalado: tamaño 0 debe fallar", false);

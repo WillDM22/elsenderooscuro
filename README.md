@@ -20,7 +20,7 @@ En un IDE: abrí `src` como carpeta de fuentes, codificación **UTF-8**, y que e
 
 | Para qué | Comando |
 | --- | --- |
-| Pruebas del juego (382 comprobaciones, sin ventana) | `java -cp out juego.pruebas.PruebaJuego` |
+| Pruebas del juego (395 comprobaciones, sin ventana) | `java -cp out juego.pruebas.PruebaJuego` |
 | Verificador de las estructuras del kit (Lista, Pila, Cola) | `java -cp out verificador.PruebaMisEstructuras` |
 | Exportar los sprites a `assets/` para editarlos | `java -cp out juego.graficos.ExportadorSprites` |
 
@@ -28,7 +28,7 @@ En un IDE: abrí `src` como carpeta de fuentes, codificación **UTF-8**, y que e
 
 | Pantalla | Teclas |
 | --- | --- |
-| Menú | ↑ ↓ elegir, ENTER confirmar (también funciona el mouse). "Opciones" cambia resolución, brillo y tamaño del texto |
+| Menú | ↑ ↓ elegir, ENTER confirmar (también funciona el mouse). "Opciones" cambia la pantalla (normal, grande o completa), el brillo y el tamaño del texto |
 | Elegir clase | ← → elegir (o números 1 a 4), ENTER empezar, ESC volver |
 | Mapa | ↑ ↓ (o ← →) elegir destino (↑ sube, ↓ baja), ENTER avanzar, **H** diario, **G** guardar, **O** opciones, ESC guardar y volver al menú |
 | Evento / cofre | ↑ ↓ o números 1 a 3, ENTER decidir |
@@ -43,7 +43,7 @@ En un IDE: abrí `src` como carpeta de fuentes, codificación **UTF-8**, y que e
 - **Tres minijuegos al azar** al atacar: *barra de precisión* (frenar el cursor), *ráfaga* (machacar ESPACIO antes de que se acabe el tiempo) y *anillo* (apretar cuando el aro toca la marca). Cuantos más enemigos derrotás, más rápidos y más exigentes se vuelven (nivel hasta 12).
 - **7 tipos de enemigos** que aparecen según el piso: Esqueleto, Lobo, Goblin (roba oro), Araña (envenena), Brujo (se cura), Espectro (se cura al golpear), Golem (golpe doble cargado) y el jefe Rey Oscuro. Algunos usan **veneno**, que también puede usar el jugador.
 - **Mapa en grafo**: 7 pisos, cada lugar es una calavera (combate), un `?` (evento, puede ser una pelea), un cofre o el jefe final.
-- **Opciones**: resolución (1024x640, 1280x800, 1536x960), brillo y tamaño del texto; se guardan en `datos/opciones.txt`.
+- **Opciones**: pantalla (Normal 1024x640, Grande 1280x800 o Pantalla completa sin estirar, con franjas negras si el monitor no es 16:10), brillo y tamaño del texto; se guardan en `datos/opciones.txt`.
 - **Guardado automático** en `datos/guardado.txt`; los eventos se leen de `datos/eventos.txt` (podés agregar los tuyos).
 
 ## Estructura
@@ -60,7 +60,7 @@ src/                  código fuente (Java)
     graficos/         Sprites, paleta y dibujo medieval con Graphics2D
     recursos/         Recursos (objetos compartidos entre pantallas)
     opciones/         Opciones (resolución, brillo, texto)
-    ventana/          VentanaJuego y Escalado (ventana con tamaño elegido; el juego sigue dibujando en 1024x640)
+    ventana/          VentanaJuego y Escalado (modos de pantalla; el juego sigue dibujando en 1024x640 y se agranda sin deformarse)
     pantallas/        Escenas: menú, opciones, clases, mapa, evento, combate, fin
     pruebas/          PruebaJuego
 assets/               imágenes .png opcionales (si no están, se dibuja todo con Graphics2D)
