@@ -16,7 +16,7 @@ import juego.entidades.Jugador;
 import juego.opciones.Opciones;
 import juego.reglas.EfectoEvento;
 import juego.reglas.EventoNarrativo;
-import juego.reglas.MapaBosque;
+import juego.reglas.MapaMazmorra;
 import juego.reglas.OpcionEvento;
 import juego.reglas.Partida;
 import juego.reglas.Registro;
@@ -319,7 +319,7 @@ public class GestorArchivos {
 
     // Arma la pila de la ruta y comprueba que sea un camino posible del grafo (empezando en el inicio)
     private PilaEnlazada<Integer> leerRuta(String texto, long semilla) {
-        MapaBosque mapa = new MapaBosque(semilla);
+        MapaMazmorra mapa = new MapaMazmorra(semilla);
         PilaEnlazada<Integer> ruta = new PilaEnlazada<>();
         Tokenizador t = new Tokenizador(texto, ',');
         int anterior = -1;
@@ -391,9 +391,9 @@ public class GestorArchivos {
         ListaEnlazada<String> lineas = new ListaEnlazada<>();
         lineas.agregar("EVENTO|Un altar de piedra|Un altar cubierto de musgo ofrece una vasija con agua clara.");
         lineas.agregar("OPCION|Beber el agua|VIDA:8;MANA:3|El agua es fresca y te reanima.");
-        lineas.agregar("OPCION|Dejar una moneda|ORO:-5;FUERZA:1|Sientes que el bosque te agradece.");
+        lineas.agregar("OPCION|Dejar una moneda|ORO:-5;FUERZA:1|Sientes que la mazmorra te lo agradece.");
         lineas.agregar("OPCION|Seguir de largo||No pasa nada.");
-        lineas.agregar("EVENTO|Un viajero herido|Un viajero te pide ayuda junto al camino.");
+        lineas.agregar("EVENTO|Un viajero herido|Un viajero te pide ayuda en un rincón del pasillo.");
         lineas.agregar("OPCION|Vendar sus heridas|VIDA:-2;ORO:15|Te lo agradece con unas monedas.");
         lineas.agregar("OPCION|Ignorarlo||Sigues caminando.");
         return lineas;

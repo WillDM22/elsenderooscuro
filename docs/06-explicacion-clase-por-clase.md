@@ -19,7 +19,7 @@ Los bloques de código son copias exactas de los archivos del proyecto.
 3. Paquete `estructuras` (la librería propia): `ListaEnlazada`, `PilaEnlazada`, `ColaEnlazada`, `Grafo`
 4. Paquete `utilidades`: `Tokenizador`
 5. Paquete `juego.entidades`: `Calidad`, `Habilidad` y sus hijas (arma, puños, hechizos), `Clase`, `EstadoVeneno`, `Jugador`, `Enemigo` y sus hijos, fábricas
-6. Paquete `juego.reglas`: los tres minijuegos y `Dificultad`, `Combate`, `MapaBosque`, `Partida`, eventos
+6. Paquete `juego.reglas`: los tres minijuegos y `Dificultad`, `Combate`, `MapaMazmorra`, `Partida`, eventos
 7. Paquete `juego.archivos`: `GestorArchivos`
 8. Paquete `juego.graficos`: sprites, dibujo medieval, imágenes de la interfaz (`src/ui`), fuentes y poses
 9. Paquetes `juego.recursos`, `juego.opciones`, `juego.ventana` y `juego.pantallas`: lo que se ve y se toca
@@ -75,7 +75,7 @@ src/
   utilidades/     Tokenizador                                           <- librería propia
   juego/
     entidades/    Jugador, Clase, Habilidad..., Enemigo...              <- los "personajes"
-    reglas/       Combate, Minijuego..., MapaBosque, Partida, eventos   <- las reglas del juego
+    reglas/       Combate, Minijuego..., MapaMazmorra, Partida, eventos   <- las reglas del juego
     archivos/     GestorArchivos                                        <- guardar y cargar
     graficos/     Paleta, Sprite, DibujoMedieval, ImagenesUi, Fuentes...<- cómo se dibuja
                   TextoPixel, Personajes
@@ -90,7 +90,7 @@ src/
 
 **Regla de oro del diseño:** las flechas de dependencia van siempre de las pantallas hacia la lógica y de la lógica hacia las estructuras, nunca al revés. `Jugador` no sabe que existe una ventana. Por eso se puede probar sin pantalla.
 
-Orden de lectura recomendado: sección 3 → 4 → 5 → 6 → 7 → 8 → 9. Si tenés poco tiempo antes de la defensa, leé al menos 3 (estructuras), 6 (`Combate`, `MapaBosque`, `Partida`) y 7 (archivos).
+Orden de lectura recomendado: sección 3 → 4 → 5 → 6 → 7 → 8 → 9. Si tenés poco tiempo antes de la defensa, leé al menos 3 (estructuras), 6 (`Combate`, `MapaMazmorra`, `Partida`) y 7 (archivos).
 
 ---
 
@@ -486,7 +486,7 @@ public boolean estaVacia() {
 
 ### 3.5 `Grafo<T>`
 
-**Para qué sirve:** representar el mapa del bosque. Un **grafo** es un conjunto de **vértices** (los lugares) unidos por **aristas** (los caminos). Es **dirigido** porque cada arista tiene un sentido: de A a B no significa de B a A. Es **de listas de adyacencia** porque cada vértice guarda la lista de los vértices a los que puede ir.
+**Para qué sirve:** representar el mapa de la mazmorra. Un **grafo** es un conjunto de **vértices** (los lugares) unidos por **aristas** (los caminos). Es **dirigido** porque cada arista tiene un sentido: de A a B no significa de B a A. Es **de listas de adyacencia** porque cada vértice guarda la lista de los vértices a los que puede ir.
 
 ```
 (0 inicio) --> (1 combate) --> (3 cofre) --> (5 jefe)
@@ -1306,7 +1306,7 @@ public enum Clase {
     MAGO("Mago", "mago", 1, 3, 5, "Bastón", 3, 70, 2, 4,
             HabilidadGolpePotente.CODIGO, "Frágil, con mucho maná. Su bastón recarga el maná."),
     DRUIDA("Druida", "druida", 3, 3, 3, "Bastón de roble", 4, 100, 2, 2,
-            HabilidadSavia.CODIGO, "Equilibrado: pega y se cura con la savia del bosque."),
+            HabilidadSavia.CODIGO, "Equilibrado: pega y se cura con la magia de la naturaleza."),
     LADRON("Pícaro", "ladron", 2, 5, 2, "Dagas", 3, 150, 3, 2,
             HabilidadVeneno.CODIGO, "Ágil: barra más lenta, críticos x3 y veneno.");
 
@@ -2566,26 +2566,26 @@ public NodoMapa(int id, TipoNodo tipo, int piso, int x, int y) {
 
 El constructor rechaza un tipo `null` y un piso negativo. Los demás métodos son getters. `setVisitado` es el único "setter": es lo único que cambia durante el juego.
 
-### 6.3 `MapaBosque`
+### 6.3 `MapaMazmorra`
 
 **Para qué sirve:** **generar** el grafo del mapa a partir de una semilla.
 
-**Qué es una semilla:** un número que inicializa un `Random`. Con la misma semilla, `Random` produce **siempre la misma secuencia** de números "aleatorios". Por eso `new MapaBosque(1234)` genera siempre el mismo mapa, y por eso **al guardar la partida alcanza con guardar la semilla**.
+**Qué es una semilla:** un número que inicializa un `Random`. Con la misma semilla, `Random` produce **siempre la misma secuencia** de números "aleatorios". Por eso `new MapaMazmorra(1234)` genera siempre el mismo mapa, y por eso **al guardar la partida alcanza con guardar la semilla**.
 
 La forma del mapa:
 
 ```
-piso 0     piso 1     piso 2     piso 3     piso 4     piso 5     piso 6
-                       (cofre)               (cofre)
- INICIO --> 2-3 lugares --> 2-3 lugares --> 2-3 lugares --> 2-3 lugares --> 2-3 lugares --> JEFE
+piso 0     piso 1     piso 2     piso 3     piso 4     piso 5     piso 6     piso 7
+                       (cofre)               (cofre)               (cofre)
+ INICIO --> 2-3 lugares --> 2-3 lugares --> 2-3 lugares --> 2-3 lugares --> 2-3 lugares --> 2-3 lugares --> JEFE
 ```
 
 ```java
 public static final int ANCHO = 1024;
 public static final int ALTO = 640;
-public static final int PISOS = 7;
-private static final int MARGEN_X = 90;
-private static final int SEPARACION_X = 140;
+public static final int PISOS = 8;
+private static final int MARGEN_X = 94;
+private static final int SEPARACION_X = 120;
 private static final int ARRIBA = 172;
 private static final int ABAJO = 492;
 
@@ -2637,16 +2637,16 @@ El método `generar` construye el grafo piso por piso:
 1. `Random azar = new Random(semilla)`: el generador de números, con la semilla.
 2. Crea el vértice de **inicio** (piso 0, a la izquierda y al medio).
 3. Guarda en `pisoAnterior` (una `ListaEnlazada<Integer>`) los ids del piso anterior. Al principio contiene solo el inicio.
-4. Para cada piso de 1 a 5:
+4. Para cada piso de 1 a 6:
    - `cantidad = 2 + azar.nextInt(2)`: 2 o 3 lugares (`nextInt(2)` da 0 o 1).
    - Para cada lugar `k`: elige su tipo (`elegirTipo`), calcula su posición (`x` según el piso; `y` repartida en franjas con un pequeño corrimiento al azar entre -15 y +15 para que no quede todo alineado) y lo agrega al grafo con `agregarVertice`. Guarda el id devuelto en `pisoActual`.
    - Llama a `conectarPisos(pisoAnterior, pisoActual, azar)`.
    - Ahora el piso actual pasa a ser el anterior.
-5. Finalmente agrega el vértice del **jefe** (piso 6) y lo conecta con el último piso.
+5. Finalmente agrega el vértice del **jefe** (piso 7) y lo conecta con el último piso.
 
 ```java
 private TipoNodo elegirTipo(Random azar, int piso, int k) {
-    if (k == 0 && (piso == 2 || piso == 4)) {
+    if (k == 0 && (piso == 2 || piso == 4 || piso == 6)) {
         return TipoNodo.COFRE;
     }
     int tirada = azar.nextInt(100);
@@ -2660,7 +2660,7 @@ private TipoNodo elegirTipo(Random azar, int piso, int k) {
 }
 ```
 
-`azar.nextInt(100)` da un número de 0 a 99: menos de 45 → combate (45%), menos de 75 → evento (30%), el resto → cofre (25%). Además, **en los pisos 2 y 4 el primer lugar es siempre un cofre**: garantiza que el jugador tenga al menos la *posibilidad* de conseguir las habilidades que pide el juego.
+`azar.nextInt(100)` da un número de 0 a 99: menos de 45 → combate (45%), menos de 75 → evento (30%), el resto → cofre (25%). Además, **en los pisos 2, 4 y 6 el primer lugar es siempre un cofre**: garantiza que el jugador tenga al menos la *posibilidad* de conseguir las habilidades que pide el juego.
 
 ```java
 private void conectarPisos(ListaEnlazada<Integer> anterior, ListaEnlazada<Integer> siguiente, Random azar) {
@@ -2914,7 +2914,7 @@ public boolean huir() {
         return false;
     }
     if (azar.nextInt(100) < getProbabilidadDeHuir()) {
-        mensaje = "Logras escabullirte entre los árboles.";
+        mensaje = "Logras escabullirte entre las sombras.";
         turnos.desencolar();
         estado = HUIDA;
     } else {
@@ -2988,7 +2988,7 @@ public void continuar() {
             mensaje = "¡Derrotaste a " + enemigo.getNombre() + "! +" + enemigo.getRecompensaOro() + " de oro.";
             estado = VICTORIA;
         } else if (jugador.estaMuerto()) {
-            mensaje = "Caes herido en el sendero...";
+            mensaje = "Caes herido en la oscuridad...";
             estado = DERROTA;
         } else {
             prepararSiguienteTurno();
@@ -3213,7 +3213,7 @@ public class Partida {
 
     // Atributos
     private final long semilla;
-    private final MapaBosque mapa;
+    private final MapaMazmorra mapa;
     private final Jugador jugador;
     private final PilaEnlazada<Integer> ruta;
     private final PilaEnlazada<Registro> diario;
@@ -3239,7 +3239,7 @@ public Partida(long semilla, Jugador jugador, PilaEnlazada<Integer> ruta, PilaEn
         throw new IllegalArgumentException("derrotados no puede ser negativo: " + derrotados);
     }
     this.semilla = semilla;
-    this.mapa = new MapaBosque(semilla);
+    this.mapa = new MapaMazmorra(semilla);
     this.jugador = jugador;
     this.ruta = ruta;
     this.diario = diario;
@@ -3251,11 +3251,11 @@ public Partida(long semilla, Jugador jugador, PilaEnlazada<Integer> ruta, PilaEn
 
 ```java
 public static Partida nueva(long semilla, ListaEnlazada<EventoNarrativo> eventos, Clase clase) {
-    MapaBosque mapaTemporal = new MapaBosque(semilla);
+    MapaMazmorra mapaTemporal = new MapaMazmorra(semilla);
     PilaEnlazada<Integer> ruta = new PilaEnlazada<>();
     ruta.apilar(mapaTemporal.getIdInicio());
     PilaEnlazada<Registro> diario = new PilaEnlazada<>();
-    diario.apilar(new Registro(mapaTemporal.getIdInicio(), "Entras a Solis Umbra como " + clase.getNombre() + "."));
+    diario.apilar(new Registro(mapaTemporal.getIdInicio(), "Entras a la mazmorra de Solis Umbra como " + clase.getNombre() + "."));
     return new Partida(semilla, new Jugador(clase), ruta, diario, 0, eventos);
 }
 ```
@@ -3277,7 +3277,7 @@ public ListaEnlazada<Integer> getAdyacentesOrdenados() {
 }
 ```
 
-- El constructor valida que nada sea `null`, que la ruta no esté vacía (siempre hay un lugar actual) y que `derrotados` no sea negativo. Después **genera el mapa con la semilla** (`new MapaBosque(semilla)`) y marca los nodos visitados.
+- El constructor valida que nada sea `null`, que la ruta no esté vacía (siempre hay un lugar actual) y que `derrotados` no sea negativo. Después **genera el mapa con la semilla** (`new MapaMazmorra(semilla)`) y marca los nodos visitados.
 - `nueva(semilla, eventos, clase)` arma una partida desde cero: la ruta con solo el nodo de inicio, el diario con "Entras a Solis Umbra como Caballero." (o la clase elegida) y un `Jugador` nuevo **de esa clase**. (Crea un mapa provisorio solo para saber el id del inicio; es barato.)
 - `getAdyacentesOrdenados()` devuelve los mismos destinos pero **ordenados de arriba hacia abajo** según su posición `y` en pantalla. Es un **ordenamiento por inserción** con la lista enlazada: para cada vecino se busca la primera posición cuyo nodo esté más abajo y se lo `insertar` ahí. **Por qué hace falta:** el grafo guarda los vecinos en el orden en que se crearon las aristas, que no tiene nada que ver con cómo se ven en pantalla; sin ordenar, la flecha "arriba" del teclado podía mover el selector hacia abajo. La pantalla del mapa usa esta versión.
 
@@ -3440,7 +3440,7 @@ public EventoNarrativo crearEventoCofre() {
             "Un calor agradable recorre tu cuerpo.", pocion));
 
     return new EventoNarrativo("Un cofre olvidado",
-            "Entre las raíces de un roble hay un cofre de hierro entreabierto. Dentro ves tres cosas.", opciones);
+            "Entre los escombros de una sala derrumbada hay un cofre de hierro entreabierto. Dentro ves tres cosas.", opciones);
 }
 ```
 
@@ -3668,7 +3668,7 @@ private boolean cargarHabilidades(Jugador jugador, String texto) {
 
 ```java
 private PilaEnlazada<Integer> leerRuta(String texto, long semilla) {
-    MapaBosque mapa = new MapaBosque(semilla);
+    MapaMazmorra mapa = new MapaMazmorra(semilla);
     PilaEnlazada<Integer> ruta = new PilaEnlazada<>();
     Tokenizador t = new Tokenizador(texto, ',');
     int anterior = -1;
@@ -4263,11 +4263,11 @@ public Recursos(String carpetaDatos, String carpetaAssets) {
 ```
 
 ```java
-public BufferedImage getFondoMapa(MapaBosque mapa) {
+public BufferedImage getFondoMapa(MapaMazmorra mapa) {
     if (fondoMapa == null || semillaFondoMapa != mapa.getSemilla()) {
-        BufferedImage nuevo = new BufferedImage(MapaBosque.ANCHO, MapaBosque.ALTO, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage nuevo = new BufferedImage(MapaMazmorra.ANCHO, MapaMazmorra.ALTO, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = nuevo.createGraphics();
-        if (ui.dibujarEstirada(g, "Fondos/FondoMinimapa.png", 0, 0, MapaBosque.ANCHO, MapaBosque.ALTO)) {
+        if (ui.dibujarEstirada(g, "Fondos/FondoMinimapa.png", 0, 0, MapaMazmorra.ANCHO, MapaMazmorra.ALTO)) {
             DibujoMedieval.dibujarSenderosYClaros(g, mapa);
             g.dispose();
             fondoMapa = nuevo;
@@ -4507,9 +4507,39 @@ Cada lugar es un **disco** (borde negro + relleno según el tipo) con el **ícon
 - **Visitado**: anillo dorado e ícono tenue (`AlphaComposite` con 45% de opacidad).
 - **Vecino elegible**: anillo blanco que **pulsa** con `Math.sin(tiempo * 5)`. El elegido tiene el anillo más grueso, una flecha y su nombre debajo.
 
-`dibujarHeroe` pinta al héroe encima del lugar actual, **saltando** con `Math.abs(Math.sin(tiempo * 3))`.
+`dibujarHeroe` pinta al héroe encima del lugar actual. Ahora usa el **sprite del equipo** (pose normal, achicado con `ESCALA_HEROE = 0,12`) en vez del dibujito chico:
 
-**El resto de la pantalla:** el fondo es `Recursos.getFondoMapa` (el muro del calabozo con los caminos encima), arriba va la franja del `Hud` y abajo el **panel inferior** (`dibujarPanelInferior`): la imagen `ContenedorMiniMap.png` con el piso actual ("Piso 2 de 6. Elige tu camino."), el tipo de destino elegido (`pista`) y la lista de teclas. Las teclas se escriben con el método auxiliar `tecla`, que pone la tecla en dorado y la acción en blanco y devuelve dónde empieza la siguiente. Para ubicar los nodos entre la franja y el panel se achicó el rango vertical del mapa: `ARRIBA = 172` y `ABAJO = 492` en `MapaBosque`.
+```java
+private void dibujarHeroe(Graphics2D g) {
+    NodoMapa nodo = partida.getNodoActualCompleto();
+    double pulso = (Math.sin(tiempo * 3) + 1) / 2;
+    double salto = pulso * 5;
+    double pies = nodo.getY() - 16;
+
+    // Halo y sombra sobre el lugar
+    Composite anterior = g.getComposite();
+    g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (0.25 + 0.2 * pulso)));
+    g.setColor(Paleta.ORO);
+    g.fillOval((int) (nodo.getX() - 30), (int) (nodo.getY() - 30), 60, 60);
+    g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.45f));
+    g.setColor(Paleta.NEGRO);
+    double achica = 1 - pulso * 0.15;
+    g.fillOval((int) (nodo.getX() - 20 * achica), (int) (pies - 5), (int) (40 * achica), 10);
+    g.setComposite(anterior);
+
+    String sprite = partida.getJugador().getClase().getSprite();
+    String ruta = Personajes.ruta(sprite, Personajes.NORMAL);
+    if (ruta != null && recursos.getUi().dibujarPersonaje(g, ruta, nodo.getX(), pies - salto, ESCALA_HEROE, false)) {
+        return;
+    }
+    BufferedImage heroe = recursos.getSprites().obtener(sprite, 3);
+    DibujoMedieval.dibujarConSombra(g, heroe, nodo.getX(), nodo.getY() - RADIO_NODO - 22 - salto);
+}
+```
+
+El `pulso` (`(Math.sin(tiempo * 3) + 1) / 2`, un número que va y vuelve entre 0 y 1) maneja tres cosas a la vez: el **saltito** del héroe, un **halo dorado** que late bajo sus pies y una **sombra** que se achica cuando salta. `dibujarPersonaje` apoya al sprite por los pies en `nodo.getY() - 16`. Si falta la imagen se usa el sprite chico de `CatalogoSprites`.
+
+**El resto de la pantalla:** el fondo es `Recursos.getFondoMapa` (el muro del calabozo con los caminos encima), arriba va la franja del `Hud` y abajo el **panel inferior** (`dibujarPanelInferior`): la imagen `ContenedorMiniMap.png` con el piso actual ("Piso 2 de 6. Elige tu camino."), el tipo de destino elegido (`pista`) y la lista de teclas. Las teclas se escriben con el método auxiliar `tecla`, que pone la tecla en dorado y la acción en blanco y devuelve dónde empieza la siguiente. Para ubicar los nodos entre la franja y el panel se achicó el rango vertical del mapa: `ARRIBA = 172` y `ABAJO = 492` en `MapaMazmorra`.
 
 La tecla **O** abre las opciones (se vuelve al mapa con ESC) y **G** guarda. La tecla **H** abre el diario: usa `partida.getUltimosRegistros(8)` (la pila inspeccionada con la auxiliar).
 
@@ -4553,7 +4583,9 @@ private void terminar() {
 - El texto aparece **letra por letra** (máquina de escribir): `letrasVisibles = tiempo × 55`.
 - Las teclas `1`, `2`, `3` eligen directamente: `KeyEvent.VK_1 + i` aprovecha que los códigos de las teclas numéricas son consecutivos.
 
-**Cómo se ve:** sobre el fondo del bosque va un **pergamino** (`MenuEventoAlea/ContenedorAlea.png`) con el título del evento en letra gótica y la primera letra de cada palabra más grande y roja (`tituloConIniciales`), el relato debajo (`parrafoResaltado`, que destaca en dorado las palabras en MAYÚSCULAS), y a los costados el cofre o el altar y el sprite de la clase. Las opciones van en un cuadro aparte (`ContenedorSeleccion.png`) con una flecha dorada (`FlechaSeleccion.png`) junto a la elegida. Como el click se decide por posición, `EscenaEvento` calcula la fila bajo el mouse con las mismas coordenadas con las que dibuja (`y = 428 + i × 41`).
+**Cómo se ve:** sobre el fondo de la mazmorra (`Fondos/FondoDungeon.png`, con el bosque dibujado por código como respaldo) va un **pergamino** (`MenuEventoAlea/ContenedorAlea.png`) con el título del evento en letra gótica y la primera letra de cada palabra más grande y roja (`tituloConIniciales`), el relato debajo (`parrafoResaltado`, que destaca en dorado las palabras en MAYÚSCULAS), y a los costados la **ilustración del evento** (izquierda) y el sprite del héroe (derecha). Las opciones van en un cuadro aparte (`ContenedorSeleccion.png`) con una flecha dorada (`FlechaSeleccion.png`) junto a la elegida. Como el click se decide por posición, `EscenaEvento` calcula la fila bajo el mouse con las mismas coordenadas con las que dibuja (`y = 428 + i × 41`).
+
+**Las ilustraciones de los eventos.** `Ilustraciones` es una tabla (un arreglo de pares `{título, archivo}`) que relaciona el **título del evento** con una imagen de `src/ui/MenuEventoAlea/Ilustraciones` (por ejemplo "Altares gemelos" → `altares.png`); el cofre usa `cofre.png`. `Ilustraciones.ruta(titulo, esCofre)` devuelve la ruta o `null`. Son 15 cuadros de 160×160 con su propia sombra y están dibujados en el mismo estilo pixel-art del resto del arte (contorno oscuro, sombreado en tres tonos y la paleta del juego); los de la emboscada, el puente del troll, el ladrón y el túnel de telarañas combinan los sprites del equipo con escenografía. `EscenaEvento` pide la imagen con `ui.obtener(ruta)` y la dibuja centrada, con un suave vaivén. **Si agregás un evento nuevo a `eventos.txt`, no hace falta tocar nada:** como no figura en la tabla, `ruta` devuelve `null` y se usa el dibujo chico de siempre (un altar). El héroe de la derecha usa `Personajes.ruta(clase, NORMAL)` con `ESCALA_HEROE = 0,2`.
 
 ### 9.7 `EscenaCombate`
 
@@ -5446,7 +5478,7 @@ Qué cubren los grupos de pruebas:
 | `pruebasNuevasMecanicas` | Las 4 clases, energía, arma y puños, hechizos nuevos, veneno (`EstadoVeneno`), guardia, huir, los tres minijuegos, la dificultad creciente y el orden de los vecinos del mapa |
 | `pruebasOpciones` | `Opciones`, guardado tolerante de `opciones.txt`, `Escalado` del mouse y las pantallas de opciones y de clases |
 | `pruebasCombate` | Cola de turnos, estados, energía, escape, victoria, derrota. Usa un **`AzarFijo`** (un `Random` que siempre da el mismo valor) para que el minijuego que sale sea siempre la barra |
-| `pruebasMapa` | **40 semillas**: todos los nodos alcanzables, sin salidas muertas, cofres en pisos 2 y 4; la misma semilla da el mismo mapa |
+| `pruebasMapa` | **40 semillas**: todos los nodos alcanzables, sin salidas muertas, cofres en pisos 2, 4 y 6; la misma semilla da el mismo mapa |
 | `pruebasEventos` | Lectura de eventos, descarte de los mal escritos, el `eventos.txt` real |
 | `pruebasPartida` | Movimiento, pilas de ruta y diario, determinismo por nodo, cofre, crecimiento |
 | `pruebasArchivos` | Guardar y cargar (ida y vuelta), los casos de **archivo dañado** (número roto, clase inexistente, hechizos de más...) |
@@ -5464,7 +5496,7 @@ Seguimos una partida completa nombrando qué clase hace cada cosa:
 
 1. **`Main`** crea `Recursos` (lee `datos/eventos.txt` con `GestorArchivos.cargarEventos`) y abre la ventana con `EscenaMenu`.
 2. En el menú, el jugador elige **Nueva partida** y `EscenaClases` le pide la **clase**. Al confirmar llama a `Partida.nueva(semilla, eventos, clase)`:
-   - `MapaBosque(semilla)` genera el **grafo** con `Random(semilla)`.
+   - `MapaMazmorra(semilla)` genera el **grafo** con `Random(semilla)`.
    - Se crea un `Jugador` de esa clase (por ejemplo el Druida: 3/3/3, vida 35, maná 15, energía 12, con el hechizo Savia vital).
    - Se apila el nodo de inicio en la **pila de la ruta** y la primera línea en la **pila del diario**.
 3. `EscenaMapa` dibuja el grafo. El jugador elige un vecino y aprieta ENTER → `partida.moverA(id)` apila en las dos pilas.

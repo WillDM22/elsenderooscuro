@@ -52,7 +52,7 @@ import juego.reglas.Combate;
 import juego.reglas.Dificultad;
 import juego.reglas.EfectoEvento;
 import juego.reglas.EventoNarrativo;
-import juego.reglas.MapaBosque;
+import juego.reglas.MapaMazmorra;
 import juego.reglas.Minijuego;
 import juego.reglas.MinijuegoAnillo;
 import juego.reglas.MinijuegoRafaga;
@@ -1005,7 +1005,7 @@ public class PruebaJuego {
         boolean aristasAdelante = true;
         boolean jefeAlcanzable = true;
         for (long semilla = 0; semilla < 40; semilla++) {
-            MapaBosque m = new MapaBosque(semilla);
+            MapaMazmorra m = new MapaMazmorra(semilla);
             Grafo<NodoMapa> g = m.getGrafo();
             if (g.recorridoEnAnchura(m.getIdInicio()).tamanio() != g.cantidadVertices()) {
                 todosConectados = false;
@@ -1013,7 +1013,7 @@ public class PruebaJuego {
             if (!g.hayCamino(m.getIdInicio(), m.getIdJefe())) {
                 jefeAlcanzable = false;
             }
-            if (g.cantidadVertices() < 12 || g.cantidadVertices() > 17) {
+            if (g.cantidadVertices() < 14 || g.cantidadVertices() > 20) {
                 cantidades = false;
             }
             for (int id = 0; id < g.cantidadVertices(); id++) {
@@ -1031,7 +1031,7 @@ public class PruebaJuego {
                     todosConEntrada = false;
                 }
             }
-            if (!hayCofreEnPiso(g, 2) || !hayCofreEnPiso(g, 4)) {
+            if (!hayCofreEnPiso(g, 2) || !hayCofreEnPiso(g, 4) || !hayCofreEnPiso(g, 6)) {
                 cofresForzados = false;
             }
         }
@@ -1040,11 +1040,11 @@ public class PruebaJuego {
         comprobar("mapa: ningún nodo (salvo el jefe) queda sin salida", todosConSalida);
         comprobar("mapa: todos los nodos tienen entrada", todosConEntrada);
         comprobar("mapa: las aristas siempre avanzan un piso", aristasAdelante);
-        comprobar("mapa: hay cofre en los pisos 2 y 4", cofresForzados);
-        comprobar("mapa: entre 12 y 17 nodos", cantidades);
+        comprobar("mapa: hay cofre en los pisos 2, 4 y 6", cofresForzados);
+        comprobar("mapa: entre 14 y 20 nodos", cantidades);
 
-        MapaBosque a = new MapaBosque(77);
-        MapaBosque b = new MapaBosque(77);
+        MapaMazmorra a = new MapaMazmorra(77);
+        MapaMazmorra b = new MapaMazmorra(77);
         boolean iguales = a.cantidadNodos() == b.cantidadNodos() && a.getGrafo().cantidadAristas() == b.getGrafo().cantidadAristas();
         for (int id = 0; id < a.cantidadNodos() && iguales; id++) {
             iguales = a.getNodo(id).getTipo() == b.getNodo(id).getTipo() && a.getNodo(id).getY() == b.getNodo(id).getY();
@@ -1053,7 +1053,7 @@ public class PruebaJuego {
 
         boolean algunoDistinto = false;
         for (long s = 1; s < 20 && !algunoDistinto; s++) {
-            MapaBosque otro = new MapaBosque(s);
+            MapaMazmorra otro = new MapaMazmorra(s);
             if (otro.cantidadNodos() != a.cantidadNodos() || otro.getGrafo().cantidadAristas() != a.getGrafo().cantidadAristas()) {
                 algunoDistinto = true;
             }
@@ -1061,7 +1061,7 @@ public class PruebaJuego {
         comprobar("mapa: semillas distintas generan mapas distintos", algunoDistinto);
         comprobar("mapa: el inicio es del tipo INICIO y el jefe del tipo JEFE",
                 a.getNodo(a.getIdInicio()).getTipo() == TipoNodo.INICIO && a.getNodo(a.getIdJefe()).getTipo() == TipoNodo.JEFE);
-        comprobar("mapa: el jefe está en el piso 6", a.getNodo(a.getIdJefe()).getPiso() == MapaBosque.PISOS - 1);
+        comprobar("mapa: el jefe está en el último piso (7)", a.getNodo(a.getIdJefe()).getPiso() == MapaMazmorra.PISOS - 1);
     }
 
     private static boolean tieneEntrada(Grafo<NodoMapa> g, int destino) {

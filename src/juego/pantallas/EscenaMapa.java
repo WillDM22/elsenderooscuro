@@ -13,10 +13,11 @@ import juego.recursos.Recursos;
 import juego.entidades.Enemigo;
 import juego.graficos.CatalogoSprites;
 import juego.graficos.DibujoMedieval;
+import juego.graficos.Personajes;
 import juego.graficos.Paleta;
 import juego.graficos.TextoPixel;
 import juego.reglas.EventoNarrativo;
-import juego.reglas.MapaBosque;
+import juego.reglas.MapaMazmorra;
 import juego.reglas.NodoMapa;
 import juego.reglas.Partida;
 import juego.reglas.Registro;
@@ -30,6 +31,7 @@ public class EscenaMapa extends Escena {
     // Constantes
     private static final int ANCHO = 1024;
     private static final int RADIO_NODO = 34;
+    private static final double ESCALA_HEROE = 0.12;
 
     // Atributos
     private final Recursos recursos;
@@ -249,20 +251,41 @@ public class EscenaMapa extends Escena {
         }
     }
 
+    // El héroe se ve con su propio sprite (pose normal) achicado, parado sobre el lugar actual: una sombra en el
+    // suelo, un saltito suave y un halo dorado que late debajo. Si falta la imagen se usa el sprite chico de siempre.
     private void dibujarHeroe(Graphics2D g) {
         NodoMapa nodo = partida.getNodoActualCompleto();
-        double salto = Math.abs(Math.sin(tiempo * 3)) * 6;
-        BufferedImage heroe = recursos.getSprites().obtener(partida.getJugador().getClase().getSprite(), 3);
+        double pulso = (Math.sin(tiempo * 3) + 1) / 2;
+        double salto = pulso * 5;
+        double pies = nodo.getY() - 16;
+
+        // Halo y sombra sobre el lugar
+        Composite anterior = g.getComposite();
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (0.25 + 0.2 * pulso)));
+        g.setColor(Paleta.ORO);
+        g.fillOval((int) (nodo.getX() - 30), (int) (nodo.getY() - 30), 60, 60);
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.45f));
+        g.setColor(Paleta.NEGRO);
+        double achica = 1 - pulso * 0.15;
+        g.fillOval((int) (nodo.getX() - 20 * achica), (int) (pies - 5), (int) (40 * achica), 10);
+        g.setComposite(anterior);
+
+        String sprite = partida.getJugador().getClase().getSprite();
+        String ruta = Personajes.ruta(sprite, Personajes.NORMAL);
+        if (ruta != null && recursos.getUi().dibujarPersonaje(g, ruta, nodo.getX(), pies - salto, ESCALA_HEROE, false)) {
+            return;
+        }
+        BufferedImage heroe = recursos.getSprites().obtener(sprite, 3);
         DibujoMedieval.dibujarConSombra(g, heroe, nodo.getX(), nodo.getY() - RADIO_NODO - 22 - salto);
     }
 
     private void dibujarPanelInferior(Graphics2D g) {
         recursos.getUi().dibujar(g, "GUIBatalla/ContenedorMiniMap.png", -9, 512);
-        String indicacion = "Piso " + partida.getNodoActualCompleto().getPiso() + " de " + (MapaBosque.PISOS - 1)
+        String indicacion = "Piso " + partida.getNodoActualCompleto().getPiso() + " de " + (MapaMazmorra.PISOS - 1)
                 + ". Elige tu camino.";
         double x = 28;
         if (vecinos.estaVacia()) {
-            indicacion = "Estás frente al final del sendero.";
+            indicacion = "Estás frente a la última puerta.";
             TextoPixel.izquierda(g, indicacion, x, 567, 22, Paleta.ORO);
         } else {
             TextoPixel.izquierda(g, indicacion, x, 567, 22, Paleta.ORO);

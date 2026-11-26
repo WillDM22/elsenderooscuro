@@ -9,7 +9,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-if not exist out\juego\Main.class call compilar.bat silencioso
+rem Siempre se compila antes de ejecutar, para no correr una version vieja que haya quedado en la carpeta out
+call compilar.bat silencioso
 if not exist out\juego\Main.class (
     echo No se pudo compilar el proyecto.
     pause

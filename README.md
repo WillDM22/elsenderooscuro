@@ -3,7 +3,7 @@
 Roguelike 2D de toma de decisiones con estética de fantasía medieval pixel-art, inspirado en *Peglin*.
 Proyecto final de **Programación II**, desarrollado en equipo.
 
-Elegís una clase (caballero, mago, druida o pícaro), recorrés un bosque ramificado (un **grafo**), enfrentás eventos
+Elegís una clase (caballero, mago, druida o pícaro), recorrés una mazmorra ramificada (un **grafo**), enfrentás eventos
 con 2 o 3 decisiones y peleás por turnos con minijuegos de precisión estilo *Undertale*. Si llegás al Rey Oscuro y lo vencés, ganás. Si caés, perdés la partida.
 
 ## Compilar y ejecutar
@@ -15,6 +15,8 @@ Requiere un JDK 11 o superior (probado con JDK 21).
 | Linux / macOS | `./compilar.sh` | `./ejecutar.sh` |
 | Windows | `compilar.bat` | `ejecutar.bat` |
 
+Los scripts de ejecución **compilan siempre antes de abrir el juego**, así nunca se corre una versión vieja.
+
 Siempre **desde la carpeta raíz del proyecto** (donde están `datos/`, `assets/` y `src/ui/`).
 En un IDE: abrí `src` como carpeta de fuentes, codificación **UTF-8**, y que el directorio de trabajo sea la raíz.
 
@@ -23,6 +25,13 @@ En un IDE: abrí `src` como carpeta de fuentes, codificación **UTF-8**, y que e
 | Pruebas del juego (403 comprobaciones, sin ventana) | `java -cp out juego.pruebas.PruebaJuego` |
 | Verificador de las estructuras del kit (Lista, Pila, Cola) | `java -cp out verificador.PruebaMisEstructuras` |
 | Exportar los sprites a `assets/` para editarlos | `java -cp out juego.graficos.ExportadorSprites` |
+
+## Crear el ejecutable (.exe)
+
+En Windows, con un JDK 17 o superior instalado, hacé doble clic en `crear-exe.bat`. Compila, arma el `.jar` y genera
+la carpeta `dist\Solis Umbra` con **`Solis Umbra.exe`** (con el ícono `icono.ico`). Esa carpeta incluye su propio Java:
+se puede comprimir y pasar a otra PC con Windows sin instalar nada (hay que pasar la carpeta completa).
+Las partidas y opciones se guardan dentro de esa misma carpeta (`app\datos`).
 
 ## Controles
 
@@ -42,20 +51,22 @@ En un IDE: abrí `src` como carpeta de fuentes, codificación **UTF-8**, y que e
 - **Acciones de combate**: Luchar, Magia, Defender y Huir (en pantalla, "Correr"; probabilidad según la Destreza; no se puede huir del jefe).
 - **Tres minijuegos al azar** al atacar: *barra de precisión* (frenar el cursor), *ráfaga* (machacar ESPACIO antes de que se acabe el tiempo) y *anillo* (apretar cuando el aro toca la marca). Cuantos más enemigos derrotás, más rápidos y más exigentes se vuelven (nivel hasta 12).
 - **7 tipos de enemigos** que aparecen según el piso: Esqueleto, Lobo, Goblin (roba oro), Araña (envenena), Brujo (se cura), Espectro (se cura al golpear), Golem (golpe doble cargado) y el jefe Rey Oscuro. Algunos usan **veneno**, que también puede usar el jugador.
-- **Mapa en grafo**: 7 pisos, cada lugar es una calavera (combate), un `?` (evento, puede ser una pelea), un cofre o el jefe final.
+- **Mapa en grafo**: 8 pisos, cada lugar es una calavera (combate), un `?` (evento, puede ser una pelea), un cofre o el jefe final.
 - **Opciones**: pantalla (Normal 1024x640, Grande 1280x800 o Pantalla completa sin estirar, con franjas negras si el monitor no es 16:10), brillo y tamaño del texto; se guardan en `datos/opciones.txt`.
 - **Guardado automático** en `datos/guardado.txt`; los eventos se leen de `datos/eventos.txt` (podés agregar los tuyos).
 
 ## Estructura
 
 ```
+icono.ico             ícono del juego para el .exe
+crear-exe.bat         genera el ejecutable de Windows (carpeta dist)
 src/                  código fuente (Java)
   estructuras/        librería propia: ListaEnlazada, PilaEnlazada, ColaEnlazada, Grafo (+ interfaces del kit)
   utilidades/         librería propia: Tokenizador (parte textos sin arreglos)
   motor/ contratos/ ui/ verificador/   kit base de la materia (no se modifica salvo PruebaMisEstructuras)
   juego/
     entidades/        Jugador, Clase (enum), Habilidad (y sus hijas), Enemigo (y sus hijos), fábricas
-    reglas/           Combate, Minijuego (barra, ráfaga, anillo), Dificultad, MapaBosque, Partida, eventos
+    reglas/           Combate, Minijuego (barra, ráfaga, anillo), Dificultad, MapaMazmorra, Partida, eventos
     archivos/         GestorArchivos (persistencia con java.io)
     graficos/         Sprites, paleta y dibujo medieval con Graphics2D; ImagenesUi (carga de PNG), Fuentes, Personajes (poses)
     recursos/         Recursos (objetos compartidos entre pantallas)
@@ -72,7 +83,7 @@ docs/                 documentación del proyecto
 ## Arte y apariencia
 
 Todo el arte de la interfaz vive en `src/ui/` (fondos, paneles, botones, hojas de sprites, fuentes `Alkhemikal` y
-`gothic-pixel-font`, puntero del mouse e `ico.png`). Las pantallas se dibujan sobre una resolución lógica de 1024x640 y
+`gothic-pixel-font`, puntero del mouse, `ico.png` y las ilustraciones de los eventos). Las pantallas se dibujan sobre una resolución lógica de 1024x640 y
 `GuiaP/` guarda las maquetas de cómo debe verse cada una. El juego busca las imágenes en el classpath (`/ui/...`) y, si
 no, en la carpeta `src/ui` (por eso se ejecuta con la raíz del proyecto como directorio de trabajo). Si falta una imagen
 no se cae: avisa por consola y dibuja una versión simple. `ico.png` se usa como ícono de la ventana y, si algún día se

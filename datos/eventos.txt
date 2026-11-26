@@ -8,10 +8,10 @@
 # Una opción con ORO negativo solo se puede elegir si el jugador tiene ese oro.
 # Las líneas que empiezan con # y las líneas vacías se ignoran.
 
-EVENTO|Altares gemelos|Dos altares de piedra se enfrentan en un claro. Uno brilla con una luz blanca; el otro, rodeado de velas negras, parece susurrar tu nombre.
+EVENTO|Altares gemelos|Dos altares de piedra se enfrentan en una sala circular. Uno brilla con una luz blanca; el otro, rodeado de velas negras, parece susurrar tu nombre.
 OPCION|Rezar ante el altar blanco|VIDA:10|La luz te baña y tus heridas se cierran.
 OPCION|Rezar ante el altar negro|VIDA:-4;INTELIGENCIA:1|Un dolor agudo te atraviesa, pero entiendes cosas que antes no veías.
-OPCION|Pasar de largo||Los altares quedan atrás. El bosque guarda silencio.
+OPCION|Pasar de largo||Los altares quedan atrás. La mazmorra guarda silencio.
 
 EVENTO|El mercader errante|Un mercader encorvado arrastra un carro lleno de frascos y amuletos. Sonríe con demasiados dientes.
 OPCION|Comprar un elixir (15 oro)|ORO:-15;VIDA:15;MANA:6|El elixir sabe a miel y a hierro. Te sientes renovado.
@@ -23,14 +23,14 @@ OPCION|Beber del agua|VIDA:-4;INTELIGENCIA:1|El agua quema la garganta, pero tu 
 OPCION|Llenar un frasco|MANA:6|Guardas un poco del agua. Vibra con magia antigua.
 OPCION|Ignorarla||Te alejas sin mirar atrás.
 
-EVENTO|El ermitaño del roble|Un anciano de barba larga vive dentro de un roble hueco. Te observa con ojos tranquilos y te ofrece un té humeante.
+EVENTO|El ermitaño de la celda|Un anciano de barba larga vive en una celda olvidada, con la reja abierta de par en par. Te observa con ojos tranquilos y te ofrece un té humeante.
 OPCION|Pedirle que te enseñe a sanar|HABILIDAD:CURACION|Con paciencia, el ermitaño te enseña una oración de luz sanadora.
 OPCION|Escuchar sus historias|MANA:5;VIDA:4|Entre tazas de té, tu cansancio se disuelve.
 OPCION|Seguir tu camino||El ermitaño asiente y vuelve a su silencio.
 
-EVENTO|Emboscada en el sendero|Unas ramas crujen a tu espalda. Un esqueleto con armadura oxidada bloquea el camino y levanta su espada.
+EVENTO|Emboscada en el pasillo|Unos huesos crujen a tu espalda. Un esqueleto con armadura oxidada bloquea el camino y levanta su espada.
 OPCION|Desenvainar y luchar|COMBATE:ESQUELETO|Respiras hondo y te preparas para el combate.
-OPCION|Huir por el matorral|VIDA:-5|Escapas entre espinas, con rasguños en brazos y piernas.
+OPCION|Huir por un pasadizo estrecho|VIDA:-5|Escapas por una grieta de piedra áspera, con rasguños en brazos y piernas.
 OPCION|Dejarle una bolsa de monedas (10 oro)|ORO:-10|El esqueleto toma el oro y se aparta con una reverencia.
 
 EVENTO|El herrero abandonado|Una fragua aún tibia, un yunque y un martillo cubiertos de hollín. Nadie la cuida desde hace años.
@@ -43,32 +43,32 @@ OPCION|Estudiar el tomo rojo|HABILIDAD:GOLPE;VIDA:-3|Las páginas arden en tu me
 OPCION|Estudiar el tomo azul|INTELIGENCIA:1|Los símbolos se ordenan solos. Piensas con más claridad.
 OPCION|Llevarte las páginas sueltas|ORO:10|Un coleccionista pagará bien por estas hojas.
 
-EVENTO|El puente del troll|Un puente de madera cruza un barranco. Debajo, un troll de piedra te mira y golpea el suelo con su garrote.
+EVENTO|El puente del troll|Un puente de madera cruza un foso sin fondo. Debajo, un troll de piedra te mira y golpea el suelo con su garrote.
 OPCION|Pagar el peaje (12 oro)|ORO:-12|El troll recibe las monedas y bosteza.
 OPCION|Cruzar corriendo|VIDA:-6|Las tablas crujen y el garrote casi te alcanza, pero logras cruzar.
 OPCION|Enfrentarlo|COMBATE:ESQUELETO|El troll se deshace en piedras, y de ellas se levanta un esqueleto guardián.
 
-EVENTO|El camino se bifurca en la niebla|La niebla se espesa y unas lucecitas azules flotan entre los árboles. Puedes oír unos aullidos lejanos.
+EVENTO|El pasillo se bifurca en la niebla|La niebla se espesa y unas lucecitas azules flotan entre las columnas. Puedes oír unos aullidos lejanos.
 OPCION|Seguir las lucecitas|HABILIDAD:ESCAPE;VIDA:-3|Las luces te guían entre las sombras y aprendes a moverte sin ser visto.
 OPCION|Quedarte quieto y respirar|MANA:4|La niebla se disipa lentamente y recuperas la calma.
 OPCION|Gritar para pedir ayuda|COMBATE:LOBO|Los aullidos se acercan. ¡Un lobo hambriento salta sobre ti!
 
-EVENTO|El campamento abandonado|Un fuego casi apagado y tres tiendas rotas. Hay huellas frescas en el barro.
+EVENTO|El campamento abandonado|Un fuego casi apagado y tres tiendas rotas. Hay huellas frescas en el polvo.
 OPCION|Revisar las tiendas|ORO:15|Entre las mantas encuentras una bolsa con monedas.
 OPCION|Dormir un rato|VIDA:12;MANA:4|Duermes con un ojo abierto, pero descansas lo suficiente.
 OPCION|Montar guardia|DESTREZA:1|Pasas la noche atento. Tus sentidos se afinan.
 
-EVENTO|El espejo roto|Un espejo de marco dorado cuelga de un árbol. Tu reflejo tarda un instante de más en moverse.
+EVENTO|El espejo roto|Un espejo de marco dorado cuelga de un muro cubierto de hiedra. Tu reflejo tarda un instante de más en moverse.
 OPCION|Mirar fijamente tu reflejo|DESTREZA:1;VIDA:-3|Tu reflejo sonríe y te enseña a esquivar. Un escalofrío te recorre.
 OPCION|Romper el espejo|ORO:8|Los fragmentos de marco dorado valen algo.
 OPCION|Cubrirlo con una tela|MANA:3|Sientes que la magia del lugar se calma.
 
-EVENTO|El túnel de telarañas|Una cueva baja está tapizada de hilos plateados. Algo grande se mueve en la oscuridad del fondo.
+EVENTO|El túnel de telarañas|Un corredor bajo está tapizado de hilos plateados. Algo grande se mueve en la oscuridad del fondo.
 OPCION|Cortar los hilos y avanzar|COMBATE:ARANA|Los hilos vibran y una araña enorme baja del techo.
 OPCION|Buscar entre los capullos|ORO:12;VIDA:-3|Entre los capullos hay monedas, pero una picadura te alcanza.
-OPCION|Rodear la cueva|MANA:3|Das un largo rodeo y el aire fresco te despeja.
+OPCION|Rodear el corredor|MANA:3|Das un largo rodeo por otro pasillo y el aire fresco te despeja.
 
-EVENTO|El ladrón de la encrucijada|Un hombrecillo verde se sienta sobre un cartel torcido. Cuenta monedas que no parecen suyas.
+EVENTO|El ladrón de la encrucijada|Un hombrecillo verde se sienta sobre un cartel torcido, donde los pasillos se cruzan. Cuenta monedas que no parecen suyas.
 OPCION|Pedirle el camino|ORO:-5;DESTREZA:1|Te cobra por la información, pero te enseña un atajo ágil.
 OPCION|Quitarle la bolsa|COMBATE:GOBLIN|El goblin chilla, saca una daga oxidada y se abalanza sobre ti.
 OPCION|Seguir de largo||Sientes sus ojos clavados en tu espalda hasta que el camino da la vuelta.

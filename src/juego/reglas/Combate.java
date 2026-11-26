@@ -161,7 +161,7 @@ public class Combate {
             return false;
         }
         if (azar.nextInt(100) < getProbabilidadDeHuir()) {
-            mensaje = "Logras escabullirte entre los árboles.";
+            mensaje = "Logras escabullirte entre las sombras.";
             turnos.desencolar();
             estado = HUIDA;
         } else {
@@ -226,7 +226,7 @@ public class Combate {
                 mensaje = "¡Derrotaste a " + enemigo.getNombre() + "! +" + enemigo.getRecompensaOro() + " de oro.";
                 estado = VICTORIA;
             } else if (jugador.estaMuerto()) {
-                mensaje = "Caes herido en el sendero...";
+                mensaje = "Caes herido en la oscuridad...";
                 estado = DERROTA;
             } else {
                 prepararSiguienteTurno();

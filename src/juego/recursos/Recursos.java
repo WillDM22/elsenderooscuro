@@ -10,7 +10,7 @@ import juego.graficos.ImagenesUi;
 import juego.graficos.TextoPixel;
 import juego.opciones.Opciones;
 import juego.reglas.EventoNarrativo;
-import juego.reglas.MapaBosque;
+import juego.reglas.MapaMazmorra;
 
 // Objetos compartidos por todas las pantallas: archivos, sprites, eventos y fondos ya dibujados.
 // Se crean una sola vez en Main y se van pasando de una escena a otra.
@@ -45,18 +45,18 @@ public class Recursos {
     // Fondo de bosque para menú, eventos y combates (se dibuja la primera vez que se pide)
     public BufferedImage getFondoBosque() {
         if (fondoBosque == null) {
-            fondoBosque = DibujoMedieval.crearFondoBosque(sprites, MapaBosque.ANCHO, MapaBosque.ALTO, 7);
+            fondoBosque = DibujoMedieval.crearFondoBosque(sprites, MapaMazmorra.ANCHO, MapaMazmorra.ALTO, 7);
         }
         return fondoBosque;
     }
 
     // Fondo del mapa: el muro del calabozo con los senderos y los claros. Se vuelve a dibujar solo si cambió la
     // semilla (otra partida). Si falta la imagen del muro se usa el bosque dibujado por código.
-    public BufferedImage getFondoMapa(MapaBosque mapa) {
+    public BufferedImage getFondoMapa(MapaMazmorra mapa) {
         if (fondoMapa == null || semillaFondoMapa != mapa.getSemilla()) {
-            BufferedImage nuevo = new BufferedImage(MapaBosque.ANCHO, MapaBosque.ALTO, BufferedImage.TYPE_INT_ARGB);
+            BufferedImage nuevo = new BufferedImage(MapaMazmorra.ANCHO, MapaMazmorra.ALTO, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g = nuevo.createGraphics();
-            if (ui.dibujarEstirada(g, "Fondos/FondoMinimapa.png", 0, 0, MapaBosque.ANCHO, MapaBosque.ALTO)) {
+            if (ui.dibujarEstirada(g, "Fondos/FondoMinimapa.png", 0, 0, MapaMazmorra.ANCHO, MapaMazmorra.ALTO)) {
                 DibujoMedieval.dibujarSenderosYClaros(g, mapa);
                 g.dispose();
                 fondoMapa = nuevo;

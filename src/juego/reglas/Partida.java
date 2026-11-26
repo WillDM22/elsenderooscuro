@@ -16,7 +16,7 @@ public class Partida {
 
     // Atributos
     private final long semilla;
-    private final MapaBosque mapa;
+    private final MapaMazmorra mapa;
     private final Jugador jugador;
     private final PilaEnlazada<Integer> ruta;
     private final PilaEnlazada<Registro> diario;
@@ -36,7 +36,7 @@ public class Partida {
             throw new IllegalArgumentException("derrotados no puede ser negativo: " + derrotados);
         }
         this.semilla = semilla;
-        this.mapa = new MapaBosque(semilla);
+        this.mapa = new MapaMazmorra(semilla);
         this.jugador = jugador;
         this.ruta = ruta;
         this.diario = diario;
@@ -47,11 +47,11 @@ public class Partida {
 
     // Partida nueva: héroe nuevo, parado en el inicio
     public static Partida nueva(long semilla, ListaEnlazada<EventoNarrativo> eventos, Clase clase) {
-        MapaBosque mapaTemporal = new MapaBosque(semilla);
+        MapaMazmorra mapaTemporal = new MapaMazmorra(semilla);
         PilaEnlazada<Integer> ruta = new PilaEnlazada<>();
         ruta.apilar(mapaTemporal.getIdInicio());
         PilaEnlazada<Registro> diario = new PilaEnlazada<>();
-        diario.apilar(new Registro(mapaTemporal.getIdInicio(), "Entras a Solis Umbra como " + clase.getNombre() + "."));
+        diario.apilar(new Registro(mapaTemporal.getIdInicio(), "Entras a la mazmorra de Solis Umbra como " + clase.getNombre() + "."));
         return new Partida(semilla, new Jugador(clase), ruta, diario, 0, eventos);
     }
 
@@ -214,7 +214,7 @@ public class Partida {
                 "Un calor agradable recorre tu cuerpo.", pocion));
 
         return new EventoNarrativo("Un cofre olvidado",
-                "Entre las raíces de un roble hay un cofre de hierro entreabierto. Dentro ves tres cosas.", opciones);
+                "Entre los escombros de una sala derrumbada hay un cofre de hierro entreabierto. Dentro ves tres cosas.", opciones);
     }
 
     // Progreso del héroe: cada 2 enemigos derrotados mejora un atributo, rotando Fuerza, Destreza e Inteligencia.
@@ -240,7 +240,7 @@ public class Partida {
         return semilla;
     }
 
-    public MapaBosque getMapa() {
+    public MapaMazmorra getMapa() {
         return mapa;
     }
 

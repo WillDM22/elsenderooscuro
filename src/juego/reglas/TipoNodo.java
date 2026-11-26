@@ -1,6 +1,6 @@
 package juego.reglas;
 
-// Tipos de lugar que hay en el mapa del bosque.
+// Tipos de lugar que hay en el mapa de la mazmorra.
 public enum TipoNodo {
     INICIO("Inicio"),
     COMBATE("Combate"),

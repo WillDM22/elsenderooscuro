@@ -18,7 +18,7 @@ flowchart TD
         utilidades["utilidades<br/>Tokenizador"]
     end
     entidades["juego.entidades<br/>Jugador, Clase, Habilidad, Enemigo"]
-    reglas["juego.reglas<br/>Combate, Minijuego (3),<br/>MapaBosque, Partida, eventos"]
+    reglas["juego.reglas<br/>Combate, Minijuego (3),<br/>MapaMazmorra, Partida, eventos"]
     opciones["juego.opciones<br/>Opciones"]
     ventana["juego.ventana<br/>VentanaJuego, Escalado"]
     archivos["juego.archivos<br/>GestorArchivos"]
@@ -57,7 +57,7 @@ Por eso `Habilidad` no usa los minijuegos: el resultado de un minijuego viaja co
 
 | Estructura | Clase | Dónde se usa | Por qué esa y no otra |
 |---|---|---|---|
-| **Grafo dirigido** (listas de adyacencia) | `Grafo<T>` | `MapaBosque`: cada lugar es un vértice y cada camino una arista | Los caminos tienen forma de red y solo se avanza en un sentido |
+| **Grafo dirigido** (listas de adyacencia) | `Grafo<T>` | `MapaMazmorra`: cada lugar es un vértice y cada camino una arista | Los caminos tienen forma de red y solo se avanza en un sentido |
 | **Lista enlazada** | `ListaEnlazada<T>` | Repertorio de hechizos del `Jugador` (máx. 4), opciones de cada `EventoNarrativo`, efectos de cada opción, lista de adyacencia de cada vértice, eventos cargados | Pocos elementos, se recorren siempre de principio a fin, se agregan al final |
 | **Cola enlazada** (FIFO) | `ColaEnlazada<T>` | `Combate`: los turnos (Jugador / Enemigo); `Grafo`: recorrido en anchura | El primero en llegar es el primero en actuar |
 | **Pila enlazada** (LIFO) | `PilaEnlazada<T>` | `Partida`: la ruta de nodos visitados y el diario de decisiones; `Grafo`: recorrido en profundidad | Lo más reciente es lo que importa (último lugar, últimas decisiones) |
@@ -168,12 +168,12 @@ classDiagram
     Combate --> Minijuego
     Combate ..> ColaEnlazada
 
-    class MapaBosque {
+    class MapaMazmorra {
         -Grafo~NodoMapa~ grafo
-        +MapaBosque(semilla)
+        +MapaMazmorra(semilla)
     }
-    MapaBosque --> Grafo
-    MapaBosque --> NodoMapa
+    MapaMazmorra --> Grafo
+    MapaMazmorra --> NodoMapa
     NodoMapa --> TipoNodo
 
     class Partida {
@@ -184,7 +184,7 @@ classDiagram
         +getAdyacentesOrdenados() ListaEnlazada
         +getUltimosRegistros(n)
     }
-    Partida --> MapaBosque
+    Partida --> MapaMazmorra
     Partida --> Jugador
     Partida o-- Registro
 
@@ -237,8 +237,8 @@ El recorrido de **un turno del jugador** es:
 
 ### 4.2 El mapa y el grafo
 
-1. `MapaBosque(semilla)` crea un `Grafo<NodoMapa>`. Cada `NodoMapa` es un vértice con tipo (calavera, `?`, cofre, jefe), piso y posición en pantalla.
-2. Los pisos 1 a 5 tienen 2 o 3 lugares. Para cada par de pisos consecutivos se agregan aristas **dirigidas** de izquierda a derecha, y se asegura que ningún lugar quede sin salida ni sin entrada.
+1. `MapaMazmorra(semilla)` crea un `Grafo<NodoMapa>`. Cada `NodoMapa` es un vértice con tipo (calavera, `?`, cofre, jefe), piso y posición en pantalla.
+2. Los pisos 1 a 6 tienen 2 o 3 lugares. Para cada par de pisos consecutivos se agregan aristas **dirigidas** de izquierda a derecha, y se asegura que ningún lugar quede sin salida ni sin entrada.
 3. `Partida` guarda en una **pila** (`ruta`) los ids visitados; el tope es el lugar actual.
 4. `EscenaMapa` pide `partida.getAdyacentesOrdenados()` (que llama a `grafo.idsAdyacentes(actual)` y ordena los vecinos de arriba hacia abajo) y esos son los únicos destinos elegibles. Dibuja los demás lugares, pero sin anillo blanco.
 5. Al elegir, `partida.moverA(id)` verifica con `grafo.existeArista(actual, id)`, apila el id y anota en la pila `diario`.
@@ -304,7 +304,7 @@ OPCION|texto del botón|EFECTO:valor;EFECTO:valor|texto del resultado
 | Pixel-art medieval | Arte propio del equipo en `src/ui` (cargado por `ImagenesUi`, `Fuentes`, `Personajes`); respaldo con sprites hechos con texto y Graphics2D en `juego.graficos` |
 | Cargador de imágenes con respaldo (si falta un archivo no se cae) | `ImagenesUi`, `GestorSprites` |
 | Personaje humano con Fuerza, Destreza, Inteligencia y hasta 4 hechizos (con 4 clases a elegir) | `Jugador`, `Clase`, `Habilidad*` |
-| Mapa ramificado con Combate, Cofre, `?` y Jefe | `MapaBosque`, `TipoNodo`, `EscenaMapa` |
+| Mapa ramificado con Combate, Cofre, `?` y Jefe | `MapaMazmorra`, `TipoNodo`, `EscenaMapa` |
 | Minijuegos de precisión estilo Undertale (barra, ráfaga, anillo) con efecto de la Destreza y dificultad creciente | `Minijuego`, `BarraPrecision`, `MinijuegoRafaga`, `MinijuegoAnillo`, `Dificultad`, `EscenaCombate.dibujarMinijuego` |
 | Acciones de combate estilo Pokémon (Luchar, Magia, Defender, Huir) y energía además del maná | `Combate`, `Jugador`, `HabilidadArma`, `HabilidadPunos` |
 | Variedad de enemigos | `Esqueleto`, `Lobo`, `Goblin`, `Arana`, `Brujo`, `Espectro`, `Golem`, `ReyOscuro`, `FabricaEnemigos` |

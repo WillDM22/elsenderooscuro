@@ -4,3 +4,5 @@ out/
 *.iml
 guardado.txt
 opciones.txt
+dist/
+build/

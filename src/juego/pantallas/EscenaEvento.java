@@ -3,12 +3,15 @@ package juego.pantallas;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
 import juego.recursos.Recursos;
 import juego.entidades.Enemigo;
 import juego.entidades.FabricaEnemigos;
 import juego.graficos.CatalogoSprites;
 import juego.graficos.DibujoMedieval;
+import juego.graficos.Ilustraciones;
 import juego.graficos.ImagenesUi;
+import juego.graficos.Personajes;
 import juego.graficos.Paleta;
 import juego.graficos.TextoPixel;
 import juego.reglas.EventoNarrativo;
@@ -23,6 +26,7 @@ public class EscenaEvento extends Escena {
 
     // Constantes
     private static final int ANCHO = 1024;
+    private static final double ESCALA_HEROE = 0.2;
     private static final int ELEGIR = 0;
     private static final int RESULTADO = 1;
     private static final double LETRAS_POR_SEGUNDO = 55;
@@ -122,16 +126,31 @@ public class EscenaEvento extends Escena {
     @Override
     public void dibujar(Graphics2D g) {
         ImagenesUi ui = recursos.getUi();
-        g.drawImage(recursos.getFondoBosque(), 0, 0, null);
-        g.setColor(new Color(0, 0, 0, 100));
-        g.fillRect(0, 0, ANCHO, 640);
+        // Fondo: la mazmorra del equipo (si falta la imagen, el bosque de siempre con un velo oscuro)
+        if (!ui.dibujarEstirada(g, "Fondos/FondoDungeon.png", 0, 0, ANCHO, 640)) {
+            g.drawImage(recursos.getFondoBosque(), 0, 0, null);
+            g.setColor(new Color(0, 0, 0, 100));
+            g.fillRect(0, 0, ANCHO, 640);
+        }
         Hud.dibujarFranja(g, recursos, partida.getJugador(), ANCHO);
 
-        // Decorado a los costados del pergamino
-        String decorado = esCofre ? CatalogoSprites.COFRE : CatalogoSprites.ALTAR;
+        // A los costados del pergamino: la ilustración del evento (izquierda) y el héroe con su sprite (derecha)
         double flota = Math.sin(tiempo * 2) * 4;
-        DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(decorado, 7), 98, 250 + flota);
-        DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(partida.getJugador().getClase().getSprite(), 7), ANCHO - 98, 250 - flota);
+        String ilustracion = Ilustraciones.ruta(evento.getTitulo(), esCofre);
+        BufferedImage dibujo = ilustracion == null ? null : ui.obtener(ilustracion);
+        if (dibujo != null) {
+            // Las ilustraciones son cuadros de 160 x 160 con su propia sombra: se ubican por el centro del cuadro
+            g.drawImage(dibujo, (int) (98 - dibujo.getWidth() / 2.0), (int) (260 + flota - dibujo.getHeight() / 2.0), null);
+        } else {
+            // Respaldo: los dibujos chicos de siempre
+            String decorado = esCofre ? CatalogoSprites.COFRE : CatalogoSprites.ALTAR;
+            DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(decorado, 7), 98, 250 + flota);
+        }
+        String clase = partida.getJugador().getClase().getSprite();
+        String rutaHeroe = Personajes.ruta(clase, Personajes.NORMAL);
+        if (rutaHeroe == null || !ui.dibujarPersonaje(g, rutaHeroe, ANCHO - 90, 346 - flota * 0.5, ESCALA_HEROE, false)) {
+            DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(clase, 7), ANCHO - 98, 250 - flota);
+        }
 
         // Pergamino con el relato
         ui.dibujar(g, "MenuEventoAlea/ContenedorAlea.png", 167, 101);
@@ -145,7 +164,7 @@ public class EscenaEvento extends Escena {
                 TextoPixel.izquierda(g, resumen, 222, y + 8, 19, new Color(130, 30, 20), false);
             }
             if (elegida.getEmboscada() != null) {
-                TextoPixel.izquierda(g, "¡Algo se acerca entre los árboles!", 222, y + 38, 18, new Color(150, 20, 30), false);
+                TextoPixel.izquierda(g, "¡Algo se acerca entre las sombras!", 222, y + 38, 18, new Color(150, 20, 30), false);
             }
         }
 

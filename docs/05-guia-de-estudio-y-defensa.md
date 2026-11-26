@@ -15,7 +15,7 @@ Esta guía te prepara para exponer **Solis Umbra** y responder preguntas del pro
 ## 1. Guion de la exposición
 
 **Minuto 0–1: qué es.**
-"Es un roguelike de decisiones inspirado en Peglin. Elegís una clase (caballero, mago, druida o pícaro), avanzás por un bosque ramificado con eventos de 2 o 3 opciones y peleás por turnos, estilo Pokémon, con minijuegos de precisión como los de Undertale. Es un solo personaje humano con tres atributos, maná, energía y hasta cuatro hechizos."
+"Es un roguelike de decisiones inspirado en Peglin. Elegís una clase (caballero, mago, druida o pícaro), avanzás por una mazmorra ramificada con eventos de 2 o 3 opciones y peleás por turnos, estilo Pokémon, con minijuegos de precisión como los de Undertale. Es un solo personaje humano con tres atributos, maná, energía y hasta cuatro hechizos."
 
 **Minuto 1–3: las cuatro estructuras y para qué sirve cada una.**
 - *Grafo dirigido:* el mapa. Cada lugar es un vértice y cada camino una arista. Solo se puede ir hacia adelante.
@@ -127,7 +127,7 @@ Cada lugar tiene solo 1 a 3 caminos. Una matriz de 15×15 guardaría 225 celdas 
 En **anchura** se visita por niveles y se usa una **cola**. En **profundidad** se avanza lo más posible por un camino antes de volver, y se usa una **pila**. Son el mismo algoritmo cambiando la estructura. En el juego uso la anchura en `hayCamino` (¿se puede llegar al jefe?) y las pruebas verifican con ella que todos los nodos son alcanzables.
 
 **¿Qué garantiza que el jugador nunca queda atrapado?**
-`MapaBosque.conectarPisos`: tras unir cada lugar con el "proporcional" del piso siguiente, revisa los lugares sin entrada y les agrega una. Así ningún lugar queda sin salida (salvo el jefe) ni sin entrada. Lo verifiqué en `PruebaJuego` con 40 semillas: desde el inicio se llega a todos los nodos y al jefe.
+`MapaMazmorra.conectarPisos`: tras unir cada lugar con el "proporcional" del piso siguiente, revisa los lugares sin entrada y les agrega una. Así ningún lugar queda sin salida (salvo el jefe) ni sin entrada. Lo verifiqué en `PruebaJuego` con 40 semillas: desde el inicio se llega a todos los nodos y al jefe.
 
 **¿Por qué `agregarArista` devuelve `boolean`?**
 Para avisar si realmente agregó algo: devuelve `false` si es un lazo (un vértice conectado consigo mismo) o una arista repetida. El generador puede intentar agregar la misma arista dos veces sin ensuciar el grafo.
@@ -143,7 +143,7 @@ Con un `PrintWriter` sobre un `OutputStreamWriter` en UTF-8, escribo una línea 
 Con un `BufferedReader`: leo todas las líneas a una lista, busco cada clave con `valorDe` y reconstruyo los objetos. El mapa se regenera con la semilla.
 
 **¿Por qué no guardás el grafo?**
-Porque `MapaBosque` usa `new Random(semilla)`: la misma semilla produce el mismo mapa. Guardo un número en vez de decenas de nodos y aristas. Está probado: "la misma semilla genera el mismo mapa".
+Porque `MapaMazmorra` usa `new Random(semilla)`: la misma semilla produce el mismo mapa. Guardo un número en vez de decenas de nodos y aristas. Está probado: "la misma semilla genera el mismo mapa".
 
 **¿Qué pasa si el archivo de guardado está dañado o lo editó el usuario?**
 `cargar` atrapa cualquier `RuntimeException` (número mal escrito, falta una clave, habilidad inventada) y devuelve `null`; antes valida que la ruta sea un camino real del grafo y que empiece en el inicio. El menú muestra "El archivo de guardado está dañado" y no se rompe. Hay pruebas de archivos dañados (número roto, clase inexistente, hechizos de más, ruta imposible...).
@@ -238,7 +238,7 @@ Parte un texto por un separador devolviendo un trozo por vez. `String.split` dev
 
 | Pregunta | Respuesta corta |
 |---|---|
-| Grafo del mapa | `Grafo<NodoMapa>`, dirigido, listas de adyacencia, 12 a 17 vértices |
+| Grafo del mapa | `Grafo<NodoMapa>`, dirigido, listas de adyacencia, 14 a 20 vértices |
 | Lista | Hechizos (máx. 4), opciones (2 a 3), efectos, adyacentes, vecinos ordenados |
 | Cola | Turnos del combate; BFS |
 | Pila | Ruta y diario; DFS |

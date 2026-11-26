@@ -9,7 +9,7 @@ public enum Clase {
     MAGO("Mago", "mago", 1, 3, 5, "Bastón", 3, 70, 2, 4,
             HabilidadGolpePotente.CODIGO, "Frágil, con mucho maná. Su bastón recarga el maná."),
     DRUIDA("Druida", "druida", 3, 3, 3, "Bastón de roble", 4, 100, 2, 2,
-            HabilidadSavia.CODIGO, "Equilibrado: pega y se cura con la savia del bosque."),
+            HabilidadSavia.CODIGO, "Equilibrado: pega y se cura con la magia de la naturaleza."),
     LADRON("Pícaro", "ladron", 2, 5, 2, "Dagas", 3, 150, 3, 2,
             HabilidadVeneno.CODIGO, "Ágil: barra más lenta, críticos x3 y veneno.");
 

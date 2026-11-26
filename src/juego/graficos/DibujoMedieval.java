@@ -12,7 +12,7 @@ import java.awt.geom.Path2D;
 import java.awt.geom.QuadCurve2D;
 import java.awt.image.BufferedImage;
 import java.util.Random;
-import juego.reglas.MapaBosque;
+import juego.reglas.MapaMazmorra;
 import juego.reglas.NodoMapa;
 
 // Ejemplo de renderizado medieval con Graphics2D: fondos de bosque, senderos punteados,
@@ -59,18 +59,18 @@ public final class DibujoMedieval {
     }
 
     // Mapa: el mismo bosque pero con claros de tierra donde están los lugares y un sendero ancho entre ellos
-    public static BufferedImage crearFondoMapa(GestorSprites sprites, MapaBosque mapa) {
-        BufferedImage fondo = crearFondoBosque(sprites, MapaBosque.ANCHO, MapaBosque.ALTO, mapa.getSemilla());
+    public static BufferedImage crearFondoMapa(GestorSprites sprites, MapaMazmorra mapa) {
+        BufferedImage fondo = crearFondoBosque(sprites, MapaMazmorra.ANCHO, MapaMazmorra.ALTO, mapa.getSemilla());
         Graphics2D g = fondo.createGraphics();
         dibujarSenderosYClaros(g, mapa);
-        sombrearBordes(g, MapaBosque.ANCHO, MapaBosque.ALTO);
+        sombrearBordes(g, MapaMazmorra.ANCHO, MapaMazmorra.ALTO);
         g.dispose();
         return fondo;
     }
 
     // Senderos anchos de tierra entre los lugares y un claro de tierra alrededor de cada uno.
     // Se dibujan sobre el fondo que esté puesto (el bosque o el muro del calabozo).
-    public static void dibujarSenderosYClaros(Graphics2D g, MapaBosque mapa) {
+    public static void dibujarSenderosYClaros(Graphics2D g, MapaMazmorra mapa) {
         g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
         Grafo<NodoMapa> grafo = mapa.getGrafo();
 
