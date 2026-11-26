@@ -1,4 +1,4 @@
-# Eventos narrativos de "El Sendero Oscuro".
+# Eventos narrativos de "Solis Umbra".
 # Cada evento tiene 2 o 3 opciones. Formato:
 #   EVENTO|título|relato
 #   OPCION|texto del botón|EFECTO:valor;EFECTO:valor|texto del resultado

@@ -8,7 +8,7 @@ public class HabilidadCuracion extends Habilidad {
 
     // Constructor
     public HabilidadCuracion() {
-        super(CODIGO, "Luz sanadora", 4);
+        super(CODIGO, "Luz Sanadora", 4);
     }
 
     @Override

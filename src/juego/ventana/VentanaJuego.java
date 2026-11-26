@@ -2,13 +2,16 @@ package juego.ventana;
 
 import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.Image;
 import java.awt.Insets;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
@@ -16,10 +19,12 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import juego.graficos.ImagenesUi;
 import juego.opciones.Opciones;
 import motor.Entrada;
 import motor.Escena;
@@ -47,6 +52,8 @@ public class VentanaJuego {
     private final JFrame marco;
     private final JPanel panel;
     private final Timer reloj;
+    private final ImagenesUi ui = new ImagenesUi();
+    private Cursor punteroPropio;
     private int resolucionAplicada;
     private long ultimo;
     private double acumulado;
@@ -70,6 +77,8 @@ public class VentanaJuego {
 
         marco.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         marco.add(panel);
+        configurarIcono();
+        configurarPuntero();
 
         reloj = new Timer(8, new ActionListener() {
             @Override
@@ -77,6 +86,67 @@ public class VentanaJuego {
                 tick();
             }
         });
+    }
+
+    // Ícono de la ventana y de la barra de tareas: el logo (src/ui/ico.png) sin su margen transparente
+    private void configurarIcono() {
+        BufferedImage logo = ui.recortada(ImagenesUi.ICONO);
+        if (logo == null) {
+            return;
+        }
+        BufferedImage icono = new BufferedImage(128, 128, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = icono.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.drawImage(logo, 0, 0, 128, 128, null);
+        g.dispose();
+        marco.setIconImage(icono);
+        // En algunos sistemas (macOS) el ícono de la barra de tareas se pone aparte; si no se puede, no pasa nada
+        try {
+            if (java.awt.Taskbar.isTaskbarSupported()
+                    && java.awt.Taskbar.getTaskbar().isSupported(java.awt.Taskbar.Feature.ICON_IMAGE)) {
+                java.awt.Taskbar.getTaskbar().setIconImage(icono);
+            }
+        } catch (UnsupportedOperationException | SecurityException e) {
+            // Sin ícono de barra de tareas: se sigue con el de la ventana
+        }
+    }
+
+    // Puntero del mouse propio (src/ui/Puntero). Los sistemas solo admiten punteros de cierto tamaño (en Windows
+    // suele ser 32 x 32): si la imagen es más grande se achica manteniendo la proporción. Si algo falla, el juego
+    // sigue con el puntero normal del sistema.
+    private void configurarPuntero() {
+        try {
+            BufferedImage original = ui.obtener(ImagenesUi.PUNTERO);
+            if (original == null) {
+                return;
+            }
+            Toolkit kit = Toolkit.getDefaultToolkit();
+            Dimension maximo = kit.getBestCursorSize(original.getWidth(), original.getHeight());
+            if (maximo.width <= 0 || maximo.height <= 0) {
+                System.err.println("ADVERTENCIA: el sistema no admite punteros personalizados. Se usa el puntero por defecto.");
+                return;
+            }
+            double factor = Math.min(1.0, Math.min((double) maximo.width / original.getWidth(),
+                    (double) maximo.height / original.getHeight()));
+            int ancho = Math.max(1, (int) Math.round(original.getWidth() * factor));
+            int alto = Math.max(1, (int) Math.round(original.getHeight() * factor));
+
+            // Lienzo transparente del tamaño exacto que pide el sistema, con la imagen arriba a la izquierda
+            BufferedImage lienzo = new BufferedImage(maximo.width, maximo.height, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2 = lienzo.createGraphics();
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            g2.drawImage(original, 0, 0, ancho, alto, null);
+            g2.dispose();
+
+            // El punto activo (el que "hace click") es la esquina superior izquierda
+            Image imagen = lienzo;
+            punteroPropio = kit.createCustomCursor(imagen, new Point(0, 0), "punteroJuego");
+            panel.setCursor(punteroPropio);
+        } catch (Exception e) {
+            System.err.println("No se pudo preparar el puntero personalizado: " + e.getMessage());
+        }
     }
 
     // Apertura desde main
@@ -224,6 +294,7 @@ public class VentanaJuego {
         g2.fillRect(0, 0, panel.getWidth(), panel.getHeight());
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         g2.translate(escalado.getDesplazamientoX(), escalado.getDesplazamientoY());
         g2.scale(escalado.getFactor(), escalado.getFactor());
         g2.clipRect(0, 0, ANCHO_LOGICO, ALTO_LOGICO);

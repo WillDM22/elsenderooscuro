@@ -76,7 +76,7 @@ public class MinijuegoRafaga extends Minijuego {
 
     @Override
     public String getInstruccion() {
-        return "¡Machaca ESPACIO lo más rápido que puedas!";
+        return "¡Machaca ESPACIO o CLICK IZQ lo más rápido que puedas!";
     }
 
     public int getGolpes() {

@@ -62,12 +62,21 @@ public final class DibujoMedieval {
     public static BufferedImage crearFondoMapa(GestorSprites sprites, MapaBosque mapa) {
         BufferedImage fondo = crearFondoBosque(sprites, MapaBosque.ANCHO, MapaBosque.ALTO, mapa.getSemilla());
         Graphics2D g = fondo.createGraphics();
+        dibujarSenderosYClaros(g, mapa);
+        sombrearBordes(g, MapaBosque.ANCHO, MapaBosque.ALTO);
+        g.dispose();
+        return fondo;
+    }
+
+    // Senderos anchos de tierra entre los lugares y un claro de tierra alrededor de cada uno.
+    // Se dibujan sobre el fondo que esté puesto (el bosque o el muro del calabozo).
+    public static void dibujarSenderosYClaros(Graphics2D g, MapaBosque mapa) {
         g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
         Grafo<NodoMapa> grafo = mapa.getGrafo();
 
         // Senderos de tierra
         g.setStroke(new BasicStroke(34, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.setColor(new Color(84, 60, 36, 190));
+        g.setColor(new Color(110, 78, 40, 170));
         for (int id = 0; id < grafo.cantidadVertices(); id++) {
             NodoMapa origen = grafo.obtener(id);
             ListaEnlazada<NodoMapa> vecinos = grafo.adyacentes(id);
@@ -79,15 +88,12 @@ public final class DibujoMedieval {
         // Claros alrededor de cada lugar
         for (int id = 0; id < grafo.cantidadVertices(); id++) {
             NodoMapa nodo = grafo.obtener(id);
-            g.setColor(new Color(96, 70, 42, 220));
-            g.fill(new Ellipse2D.Double(nodo.getX() - 52, nodo.getY() - 44, 104, 88));
-            g.setColor(new Color(60, 100, 50, 120));
+            g.setColor(new Color(112, 80, 42, 215));
+            g.fill(new Ellipse2D.Double(nodo.getX() - 46, nodo.getY() - 46, 92, 92));
+            g.setColor(new Color(60, 100, 50, 110));
             g.setStroke(new BasicStroke(3));
-            g.draw(new Ellipse2D.Double(nodo.getX() - 54, nodo.getY() - 46, 108, 92));
+            g.draw(new Ellipse2D.Double(nodo.getX() - 48, nodo.getY() - 48, 96, 96));
         }
-        sombrearBordes(g, MapaBosque.ANCHO, MapaBosque.ALTO);
-        g.dispose();
-        return fondo;
     }
 
     // Franja de bosque (para el borde de las pantallas de menú, fin, etc.)

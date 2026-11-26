@@ -1,6 +1,6 @@
 # Guía de estudio y defensa oral
 
-Esta guía te prepara para exponer **El Sendero Oscuro** y responder preguntas del profesor. Está organizada así:
+Esta guía te prepara para exponer **Solis Umbra** y responder preguntas del profesor. Está organizada así:
 
 1. El guion de la exposición (7 a 8 minutos)
 2. Qué demostrar en vivo
@@ -15,7 +15,7 @@ Esta guía te prepara para exponer **El Sendero Oscuro** y responder preguntas d
 ## 1. Guion de la exposición
 
 **Minuto 0–1: qué es.**
-"Es un roguelike de decisiones inspirado en Peglin. Elegís una clase (caballero, mago, druida o ladrón), avanzás por un bosque ramificado con eventos de 2 o 3 opciones y peleás por turnos, estilo Pokémon, con minijuegos de precisión como los de Undertale. Es un solo personaje humano con tres atributos, maná, energía y hasta cuatro hechizos."
+"Es un roguelike de decisiones inspirado en Peglin. Elegís una clase (caballero, mago, druida o pícaro), avanzás por un bosque ramificado con eventos de 2 o 3 opciones y peleás por turnos, estilo Pokémon, con minijuegos de precisión como los de Undertale. Es un solo personaje humano con tres atributos, maná, energía y hasta cuatro hechizos."
 
 **Minuto 1–3: las cuatro estructuras y para qué sirve cada una.**
 - *Grafo dirigido:* el mapa. Cada lugar es un vértice y cada camino una arista. Solo se puede ir hacia adelante.
@@ -31,10 +31,11 @@ Esta guía te prepara para exponer **El Sendero Oscuro** y responder preguntas d
 3. El guardado es un archivo de texto con una línea `CLAVE=valor` por dato. Los eventos narrativos se leen de otro archivo, así que se pueden agregar sin tocar el código.
 
 **Minuto 5–7: decisiones de diseño que puedo defender.**
-- Separé la lógica (sin Swing) de las pantallas: por eso pude hacer 403 pruebas automáticas sin abrir ventana.
+- Se separó la lógica (sin Swing) de las pantallas: por eso se pudieron hacer 403 pruebas automáticas sin abrir ventana.
 - Herencia donde hay comportamiento distinto (`Habilidad`, `Enemigo` y `Minijuego` son abstractas), pero solo donde hay un motivo. Y composición donde no lo hay: `Jugador` y `Enemigo` **tienen** un `EstadoVeneno`, no heredan de una clase común.
 - Si el archivo de guardado está dañado, el juego no se rompe: `cargar` devuelve `null`.
-- Si faltan los `.png`, el juego dibuja los sprites con Graphics2D: nunca falla por una imagen.
+- Si falta una imagen de `src/ui`, el juego avisa por consola y dibuja una versión simple (los sprites con texto y Graphics2D): nunca falla por una imagen.
+- El arte (menús, sprites, fuentes, puntero e ícono) lo hizo una parte del equipo y se integró con `ImagenesUi`, `Fuentes` y `Personajes`, sin tocar las reglas del juego (esa separación hizo que las 403 pruebas siguieran pasando).
 
 **Minuto 7–8: demo en vivo y cierre** (ver sección 2).
 
@@ -175,7 +176,7 @@ Son listas cerradas de valores (calavera, `?`, cofre...). Un `enum` evita escrib
 En los constructores y setters: `IllegalArgumentException` para valores inválidos (atributo 0, daño negativo, dificultad 0), `IllegalStateException` si se usa un objeto en un estado incorrecto (desapilar una pila vacía), `IndexOutOfBoundsException` en las listas.
 
 **¿Cómo evitás que el combate sea "demasiado fácil o difícil"?**
-Hice un "jugador robot" que juega 60 aventuras completas con una puntería regular (en `PruebaJuego`) y verifico que a veces gane y a veces pierda. Los números de enemigos y las fórmulas se ajustaron con eso.
+Hicimos un "jugador robot" que juega 60 aventuras completas con una puntería regular (en `PruebaJuego`) y verificamos que a veces gane y a veces pierda. Los números de enemigos y las fórmulas se ajustaron con eso.
 
 ---
 
@@ -221,13 +222,13 @@ El constructor de `EventoNarrativo` lanza `IllegalArgumentException` y el cargad
 Las líneas se dibujan por cada arista recorriendo cada vértice y su lista de adyacentes (`EscenaMapa.dibujarSenderos`); es dirigido aunque visualmente no haya flechas porque todas van de izquierda a derecha.
 
 **12. "¿Qué hace el `Tokenizador` y por qué no usás `split`?"**
-Parte un texto por un separador devolviendo un trozo por vez. `String.split` devuelve un **arreglo** y la consigna evita arreglos en mi código. Además es mi librería propia y se usa en el archivo de eventos, el de guardado, los sprites y el corte de líneas de texto.
+Parte un texto por un separador devolviendo un trozo por vez. `String.split` devuelve un **arreglo** y la consigna evita arreglos en nuestro código. Además es mi librería propia y se usa en el archivo de eventos, el de guardado, los sprites y el corte de líneas de texto.
 
 ---
 
 ## 6. Lo que NO tenés que decir
 
-- "Esto me lo hizo la IA." Decí: "Armé el diseño y revisé cada clase para poder explicarla". Y que sea verdad: leé `06-explicacion-clase-por-clase.md`.
+- "No sé quién hizo esta parte." Todo el equipo tiene que poder explicar cualquier clase: leé `06-explicacion-clase-por-clase.md` y respondé siempre con lo que realmente se hizo.
 - "No sé por qué funciona." Si no sabés, decí cómo lo comprobarías: "Lo probaría con una prueba chica, como las de `PruebaJuego`".
 - Inventar complejidades. Usá las tablas de esta guía.
 

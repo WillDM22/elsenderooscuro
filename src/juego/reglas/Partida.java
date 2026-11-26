@@ -51,7 +51,7 @@ public class Partida {
         PilaEnlazada<Integer> ruta = new PilaEnlazada<>();
         ruta.apilar(mapaTemporal.getIdInicio());
         PilaEnlazada<Registro> diario = new PilaEnlazada<>();
-        diario.apilar(new Registro(mapaTemporal.getIdInicio(), "Entras al Sendero Oscuro como " + clase.getNombre() + "."));
+        diario.apilar(new Registro(mapaTemporal.getIdInicio(), "Entras a Solis Umbra como " + clase.getNombre() + "."));
         return new Partida(semilla, new Jugador(clase), ruta, diario, 0, eventos);
     }
 

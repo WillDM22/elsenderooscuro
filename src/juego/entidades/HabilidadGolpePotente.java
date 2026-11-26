@@ -8,7 +8,7 @@ public class HabilidadGolpePotente extends Habilidad {
 
     // Constructor
     public HabilidadGolpePotente() {
-        super(CODIGO, "Golpe arcano", 5);
+        super(CODIGO, "Golpe Arcano", 5);
     }
 
     @Override

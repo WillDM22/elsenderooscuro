@@ -89,7 +89,7 @@ public class BarraPrecision extends Minijuego {
 
     @Override
     public String getInstruccion() {
-        return "¡Frena la barra con ESPACIO!";
+        return "¡Frena la barra con ESPACIO o con CLICK IZQ!";
     }
 
     // Calidad que daría un golpe frenado en esa posición

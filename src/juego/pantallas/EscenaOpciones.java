@@ -3,7 +3,8 @@ package juego.pantallas;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;
-import juego.graficos.DibujoMedieval;
+import java.awt.geom.AffineTransform;
+import juego.graficos.ImagenesUi;
 import juego.graficos.Paleta;
 import juego.graficos.TextoPixel;
 import juego.opciones.Opciones;
@@ -25,14 +26,14 @@ public class EscenaOpciones extends Escena {
 
     // Constantes de dibujo
     private static final int ANCHO = 1024;
-    private static final int X_FILA = 170;
+    private static final int X_FILA = 175;
     // Columnas fijas de cada fila: flecha ◀, valor (centrado) y flecha ▶. No dependen del largo del texto,
     // así "izquierda del valor = bajar" y "derecha del valor = subir" valen igual en todas las filas.
-    private static final int X_FLECHA_IZQ = 510;
-    private static final int X_VALOR = 685;
-    private static final int X_FLECHA_DER = 860;
+    private static final int X_FLECHA_IZQ = 516;
+    private static final int X_VALOR = 688;
+    private static final int X_FLECHA_DER = 862;
     private static final int X_FIN_FILA = 890;
-    private static final int Y_FILA = 250;
+    private static final int Y_FILA = 245;
     private static final int SEPARACION = 70;
 
     // Atributos
@@ -116,11 +117,13 @@ public class EscenaOpciones extends Escena {
 
     @Override
     public void dibujar(Graphics2D g) {
-        g.drawImage(recursos.getFondoBosque(), 0, 0, null);
-        g.setColor(new Color(0, 0, 0, 110));
-        g.fillRect(0, 0, ANCHO, 640);
-        DibujoMedieval.cuadroDialogo(g, 120, 130, ANCHO - 240, 420);
-        TextoPixel.centrado(g, "OPCIONES", ANCHO / 2.0, 190, 40, Paleta.ORO);
+        ImagenesUi ui = recursos.getUi();
+        if (!ui.dibujarEstirada(g, "Fondos/FondoMinimapa.png", 0, 0, ANCHO, 640)) {
+            g.setColor(Paleta.NEGRO);
+            g.fillRect(0, 0, ANCHO, 640);
+        }
+        ui.dibujar(g, "Opciones/CuadroOpciones.png", 108, 108);
+        TextoPixel.tituloCentrado(g, "Opciones", ANCHO / 2.0, 190, 46, Paleta.ORO, false);
 
         dibujarFila(g, RESOLUCION, "Resolución", opciones.getNombreResolucion());
         dibujarFila(g, BRILLO, "Brillo", opciones.getBrilloPorcentaje() + "%");
@@ -128,24 +131,40 @@ public class EscenaOpciones extends Escena {
 
         Color colorVolver = fila == VOLVER ? Paleta.ORO : Paleta.HUESO;
         if (fila == VOLVER) {
-            DibujoMedieval.flecha(g, X_FILA - 30, Y_FILA + VOLVER * SEPARACION - 9, 11 + Math.sin(tiempo * 8) * 1.5);
+            flecha(g, X_FILA - 24, Y_FILA + VOLVER * SEPARACION - 8, false);
         }
-        TextoPixel.izquierda(g, "Volver", X_FILA, Y_FILA + VOLVER * SEPARACION, 26, colorVolver);
+        TextoPixel.izquierda(g, "Volver", X_FILA, Y_FILA + VOLVER * SEPARACION, 24, colorVolver);
 
-        TextoPixel.centrado(g, "↑ ↓ elegir fila    ← → cambiar valor    ESC volver", ANCHO / 2.0, 604, 16, Paleta.PERGAMINO);
+        TextoPixel.centrado(g, "↑ ↓ elegir fila     ← → cambiar valor     ESC volver", ANCHO / 2.0, 604, 15, Paleta.PERGAMINO);
     }
 
     private void dibujarFila(Graphics2D g, int indice, String nombre, String valor) {
         int y = Y_FILA + indice * SEPARACION;
         boolean elegida = indice == fila;
-        Color color = elegida ? Paleta.ORO : Paleta.HUESO;
         if (elegida) {
-            DibujoMedieval.flecha(g, X_FILA - 30, y - 9, 11 + Math.sin(tiempo * 8) * 1.5);
+            flecha(g, X_FILA - 24, y - 8, false);
         }
-        TextoPixel.izquierda(g, nombre, X_FILA, y, 26, color);
-        TextoPixel.centrado(g, "◀", X_FLECHA_IZQ, y, 26, color);
-        TextoPixel.centrado(g, valor, X_VALOR, y, 26, color);
-        TextoPixel.centrado(g, "▶", X_FLECHA_DER, y, 26, color);
+        TextoPixel.izquierda(g, nombre, X_FILA, y, 24, elegida ? Paleta.ORO : Paleta.HUESO);
+        if (elegida) {
+            flecha(g, X_FLECHA_IZQ, y - 8, true);
+            flecha(g, X_FLECHA_DER, y - 8, false);
+        }
+        TextoPixel.centrado(g, valor, X_VALOR, y, 24, Paleta.ORO);
+    }
+
+    // Flecha dorada (la imagen apunta a la derecha; para "◀" se da vuelta). Se centra en (cx, cy).
+    private void flecha(Graphics2D g, double cx, double cy, boolean haciaLaIzquierda) {
+        ImagenesUi ui = recursos.getUi();
+        double vaiven = Math.sin(tiempo * 8) * 1.5 * (haciaLaIzquierda ? -1 : 1);
+        if (haciaLaIzquierda) {
+            AffineTransform anterior = g.getTransform();
+            g.translate(cx * 2, 0);
+            g.scale(-1, 1);
+            ui.dibujarCentrado(g, "Opciones/IconoActivo_1.png", cx + vaiven, cy);
+            g.setTransform(anterior);
+        } else {
+            ui.dibujarCentrado(g, "Opciones/IconoActivo_1.png", cx + vaiven, cy);
+        }
     }
 
     // Para las pruebas

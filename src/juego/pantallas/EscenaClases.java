@@ -3,9 +3,8 @@ package juego.pantallas;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;
-import juego.entidades.CatalogoHabilidades;
 import juego.entidades.Clase;
-import juego.graficos.DibujoMedieval;
+import juego.graficos.ImagenesUi;
 import juego.graficos.Paleta;
 import juego.graficos.TextoPixel;
 import juego.recursos.Recursos;
@@ -13,17 +12,17 @@ import juego.reglas.Partida;
 import motor.Entrada;
 import motor.Escena;
 
-// Elección de clase al empezar una partida nueva: Caballero, Mago, Druida o Ladrón.
+// Elección de clase al empezar una partida nueva: Caballero, Mago, Druida o Pícaro.
 // ←→ elige, ENTER confirma, ESC vuelve al menú. Cada clase cambia atributos, arma y primer hechizo.
 public class EscenaClases extends Escena {
 
-    // Constantes de dibujo
+    // Constantes de dibujo: las cartas son imágenes de 252 x 471 (la parte visible) y van una al lado de la otra
     private static final int ANCHO = 1024;
-    private static final int ANCHO_TARJETA = 230;
-    private static final int ALTO_TARJETA = 400;
-    private static final int X_INICIAL = 30;
-    private static final int SEPARACION = 245;
-    private static final int Y_TARJETA = 120;
+    private static final int ANCHO_TARJETA = 252;
+    private static final int ALTO_TARJETA = 471;
+    private static final int X_INICIAL = 9;
+    private static final int SEPARACION = 249;
+    private static final int Y_TARJETA = 101;
 
     // Atributos
     private final Recursos recursos;
@@ -78,41 +77,51 @@ public class EscenaClases extends Escena {
 
     @Override
     public void dibujar(Graphics2D g) {
-        g.drawImage(recursos.getFondoBosque(), 0, 0, null);
-        g.setColor(new Color(0, 0, 0, 110));
-        g.fillRect(0, 0, ANCHO, 640);
-        TextoPixel.centrado(g, "ELIGE TU CLASE", ANCHO / 2.0, 70, 42, Paleta.ORO);
-        for (int i = 0; i < Clase.CANTIDAD; i++) {
-            dibujarTarjeta(g, i);
+        ImagenesUi ui = recursos.getUi();
+        if (!ui.dibujarEstirada(g, "Fondos/FondoMinimapa.png", 0, 0, ANCHO, 640)) {
+            g.setColor(Paleta.NEGRO);
+            g.fillRect(0, 0, ANCHO, 640);
         }
-        TextoPixel.centrado(g, "← → elegir    ENTER empezar    ESC volver", ANCHO / 2.0, 604, 16, Paleta.PERGAMINO);
+        ui.dibujar(g, "MenuClase/Titulo.png", 316, 14);
+        // Primero las no elegidas y al final la elegida, para que su resplandor quede por encima de las vecinas
+        for (int i = 0; i < Clase.CANTIDAD; i++) {
+            if (i != seleccion) {
+                dibujarTarjeta(g, i);
+            }
+        }
+        dibujarTarjeta(g, seleccion);
+        TextoPixel.centrado(g, "← → elegir     ENTER empezar     ESC volver", ANCHO / 2.0, 612, 15, Paleta.PERGAMINO);
     }
 
     private void dibujarTarjeta(Graphics2D g, int i) {
+        ImagenesUi ui = recursos.getUi();
         Clase clase = Clase.porOrden(i);
         int x = xTarjeta(i);
         boolean elegida = i == seleccion;
-        int subida = elegida ? -10 : 0;
-        DibujoMedieval.cuadroDialogo(g, x, Y_TARJETA + subida, ANCHO_TARJETA, ALTO_TARJETA);
+        double subida = elegida ? -8 + Math.sin(tiempo * 3) * 2 : 0;
         if (elegida) {
-            g.setColor(Paleta.ORO);
-            g.drawRect(x - 3, Y_TARJETA + subida - 3, ANCHO_TARJETA + 6, ALTO_TARJETA + 6);
+            // Resplandor dorado alrededor de la carta elegida
+            for (int capa = 5; capa >= 1; capa--) {
+                g.setColor(new Color(255, 214, 70, 22 + (5 - capa) * 8));
+                g.fillRoundRect(x + 6 - capa * 3, (int) (Y_TARJETA + subida) + 14 - capa * 3,
+                        ANCHO_TARJETA - 12 + capa * 6, ALTO_TARJETA - 28 + capa * 6, 24, 24);
+            }
         }
-        double centro = x + ANCHO_TARJETA / 2.0;
-        double flota = elegida ? Math.sin(tiempo * 4) * 4 : 0;
-        DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(clase.getSprite(), 7), centro, Y_TARJETA + 80 + subida + flota);
-        TextoPixel.centrado(g, clase.getNombre(), centro, Y_TARJETA + 160 + subida, 24, elegida ? Paleta.ORO : Paleta.HUESO);
+        ui.dibujar(g, "MenuClase/" + archivoDe(clase) + ".png", x, Y_TARJETA + subida);
+    }
 
-        int y = Y_TARJETA + 190 + subida;
-        // Las líneas de la tarjeta son largas: se compensa la escala global del texto para que sigan entrando
-        int chico = (int) Math.round(14 / TextoPixel.getEscala());
-        int parrafo = (int) Math.round(13 / TextoPixel.getEscala());
-        TextoPixel.izquierda(g, "FUE " + clase.getFuerza() + "  DES " + clase.getDestreza() + "  INT " + clase.getInteligencia(),
-                x + 18, y, chico, Paleta.HUESO);
-        TextoPixel.izquierda(g, "Arma: " + clase.getNombreArma(), x + 18, y + 22, chico, Paleta.PERGAMINO);
-        TextoPixel.izquierda(g, "Hechizo: " + CatalogoHabilidades.crear(clase.getHechizoInicial()).getNombre(),
-                x + 18, y + 42, chico, Paleta.PERGAMINO);
-        TextoPixel.parrafo(g, clase.getDescripcion(), x + 18, y + 72, ANCHO_TARJETA - 34, parrafo, Paleta.HUESO);
+    // Nombre del archivo de la carta de cada clase
+    private String archivoDe(Clase clase) {
+        if (clase == Clase.CABALLERO) {
+            return "Caballero";
+        }
+        if (clase == Clase.MAGO) {
+            return "Mago";
+        }
+        if (clase == Clase.DRUIDA) {
+            return "Druida";
+        }
+        return "Picaro";
     }
 
     // Para las pruebas

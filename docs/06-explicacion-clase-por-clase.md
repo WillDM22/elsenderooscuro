@@ -1,6 +1,6 @@
 # Explicación clase por clase (para principiantes)
 
-Este documento explica **todo** el código de *El Sendero Oscuro*, en el orden en que conviene leerlo: de las piezas más simples (las estructuras de datos) a las más complejas (las pantallas). Está pensado para alguien que conoce la teoría básica de POO y excepciones pero es nuevo en Java: no se da nada por sabido.
+Este documento explica **todo** el código de *Solis Umbra*, en el orden en que conviene leerlo: de las piezas más simples (las estructuras de datos) a las más complejas (las pantallas). Está pensado para alguien que conoce la teoría básica de POO y excepciones pero es nuevo en Java: no se da nada por sabido.
 
 Cómo está armado cada apartado:
 
@@ -21,7 +21,7 @@ Los bloques de código son copias exactas de los archivos del proyecto.
 5. Paquete `juego.entidades`: `Calidad`, `Habilidad` y sus hijas (arma, puños, hechizos), `Clase`, `EstadoVeneno`, `Jugador`, `Enemigo` y sus hijos, fábricas
 6. Paquete `juego.reglas`: los tres minijuegos y `Dificultad`, `Combate`, `MapaBosque`, `Partida`, eventos
 7. Paquete `juego.archivos`: `GestorArchivos`
-8. Paquete `juego.graficos`: sprites y dibujo medieval
+8. Paquete `juego.graficos`: sprites, dibujo medieval, imágenes de la interfaz (`src/ui`), fuentes y poses
 9. Paquetes `juego.recursos`, `juego.opciones`, `juego.ventana` y `juego.pantallas`: lo que se ve y se toca
 10. El motor del kit (lo mínimo que hay que saber)
 11. `PruebaJuego`: cómo se prueba todo sin abrir la ventana
@@ -77,12 +77,15 @@ src/
     entidades/    Jugador, Clase, Habilidad..., Enemigo...              <- los "personajes"
     reglas/       Combate, Minijuego..., MapaBosque, Partida, eventos   <- las reglas del juego
     archivos/     GestorArchivos                                        <- guardar y cargar
-    graficos/     Paleta, Sprite, GestorSprites, DibujoMedieval...      <- cómo se dibuja
+    graficos/     Paleta, Sprite, DibujoMedieval, ImagenesUi, Fuentes...<- cómo se dibuja
+                  TextoPixel, Personajes
+
     recursos/     Recursos                                              <- objetos compartidos
     opciones/     Opciones                                              <- resolución, brillo, texto
     ventana/      VentanaJuego, Escalado                                <- ventana propia con zoom
     pantallas/    EscenaMenu, EscenaClases, EscenaMapa, EscenaCombate...<- lo que ve el usuario
-  motor/ contratos/ ui/ verificador/                                    <- kit del profesor
+  motor/ contratos/ ui/ verificador/                                    <- kit del profesor (la carpeta ui/ también
+                                                                           guarda el arte de la interfaz: ver 8.8)
 ```
 
 **Regla de oro del diseño:** las flechas de dependencia van siempre de las pantallas hacia la lógica y de la lógica hacia las estructuras, nunca al revés. `Jugador` no sabe que existe una ventana. Por eso se puede probar sin pantalla.
@@ -945,7 +948,7 @@ public class HabilidadArma extends Habilidad {
 
 - `super(CODIGO, nombre, 0, costoEnergia)`: usa el constructor completo del padre con **0 de maná** y el costo de energía que le pasen.
 - El constructor valida los rangos (porcentaje de 1 a 300, multiplicador de 1 a 5).
-- `aplicar`: si fue **fallo**, no hace daño. Si no, el daño es `getDanioFisico() * porcentaje / 100` (primero se multiplica y después se divide para no perder precisión con enteros) y, si fue **crítico**, se multiplica por el `multiplicadorCritico` de la clase (x2 la mayoría, x3 el ladrón). `enemigo.recibirDanio` devuelve el daño **real** y es el que se muestra.
+- `aplicar`: si fue **fallo**, no hace daño. Si no, el daño es `getDanioFisico() * porcentaje / 100` (primero se multiplica y después se divide para no perder precisión con enteros) y, si fue **crítico**, se multiplica por el `multiplicadorCritico` de la clase (x2 la mayoría, x3 el pícaro). `enemigo.recibirDanio` devuelve el daño **real** y es el que se muestra.
 - Al acertar recupera maná (`jugador.cambiarMana`): así el héroe siempre tiene algo para hacer.
 
 ```java
@@ -1003,7 +1006,7 @@ public class HabilidadCuracion extends Habilidad {
 
     // Constructor
     public HabilidadCuracion() {
-        super(CODIGO, "Luz sanadora", 4);
+        super(CODIGO, "Luz Sanadora", 4);
     }
 
     @Override
@@ -1024,7 +1027,7 @@ public class HabilidadCuracion extends Habilidad {
 }
 ```
 
-- **Luz sanadora**: cuesta 4 de maná y **no usa minijuego**: sobrescribe `usaBarra()` para devolver `false`. Cura `getPotenciaCuracion()` (6 + 3 × Inteligencia). `jugador.curar(...)` devuelve lo que **realmente** curó (no puede pasar de la vida máxima).
+- **Luz Sanadora**: cuesta 4 de maná y **no usa minijuego**: sobrescribe `usaBarra()` para devolver `false`. Cura `getPotenciaCuracion()` (6 + 3 × Inteligencia). `jugador.curar(...)` devuelve lo que **realmente** curó (no puede pasar de la vida máxima).
 
 ```java
 public class HabilidadGolpePotente extends Habilidad {
@@ -1034,7 +1037,7 @@ public class HabilidadGolpePotente extends Habilidad {
 
     // Constructor
     public HabilidadGolpePotente() {
-        super(CODIGO, "Golpe arcano", 5);
+        super(CODIGO, "Golpe Arcano", 5);
     }
 
     @Override
@@ -1062,7 +1065,7 @@ public class HabilidadGolpePotente extends Habilidad {
 }
 ```
 
-- **Golpe arcano**: cuesta 5 de maná y su daño escala con **Inteligencia** (`getPotenciaMagica`). El crítico hace `danio * 5 / 2` (2,5 veces). `getDificultadBarra()` devuelve 0,6: el minijuego se vuelve **más exigente**. Gran daño, minijuego difícil.
+- **Golpe Arcano**: cuesta 5 de maná y su daño escala con **Inteligencia** (`getPotenciaMagica`). El crítico hace `danio * 5 / 2` (2,5 veces). `getDificultadBarra()` devuelve 0,6: el minijuego se vuelve **más exigente**. Gran daño, minijuego difícil.
 
 ```java
 public class HabilidadEscape extends Habilidad {
@@ -1107,7 +1110,7 @@ public class HabilidadFuria extends Habilidad {
 
     // Constructor
     public HabilidadFuria() {
-        super(CODIGO, "Tajo heroico", 4);
+        super(CODIGO, "Tajo Heroico", 4);
     }
 
     @Override
@@ -1135,7 +1138,7 @@ public class HabilidadFuria extends Habilidad {
 }
 ```
 
-- **Tajo heroico** (hechizo inicial del Caballero): cuesta 4 de maná y pega `getDanioFisico() * 3 / 2` (escala con **Fuerza**); el crítico lo duplica.
+- **Tajo Heroico** (hechizo inicial del Caballero): cuesta 4 de maná y pega `getDanioFisico() * 3 / 2` (escala con **Fuerza**); el crítico lo duplica.
 
 ```java
 public class HabilidadSavia extends Habilidad {
@@ -1218,7 +1221,7 @@ public class HabilidadVeneno extends Habilidad {
 }
 ```
 
-- **Daga envenenada** (hechizo inicial del Ladrón): cuesta 3 de maná, hace un corte leve y deja al enemigo **envenenado** (`enemigo.envenenar(turnos, danioVeneno)`). El veneno pega más fuerte con más Destreza (`2 + Destreza / 2`) y un crítico lo alarga un turno.
+- **Daga envenenada** (hechizo inicial del Pícaro): cuesta 3 de maná, hace un corte leve y deja al enemigo **envenenado** (`enemigo.envenenar(turnos, danioVeneno)`). El veneno pega más fuerte con más Destreza (`2 + Destreza / 2`) y un crítico lo alarga un turno.
 
 ### 5.5 `CatalogoHabilidades`
 
@@ -1291,7 +1294,7 @@ public static Habilidad crear(String codigo) {
 
 ### 5.6 `Clase` (un `enum` con datos)
 
-**Para qué sirve:** definir las **cuatro clases del héroe** (Caballero, Mago, Druida, Ladrón). Cada una trae sus atributos iniciales, su arma y su hechizo inicial.
+**Para qué sirve:** definir las **cuatro clases del héroe** (Caballero, Mago, Druida, Pícaro). Cada una trae sus atributos iniciales, su arma y su hechizo inicial.
 
 Un `enum` es una lista **cerrada** de valores. A diferencia de las constantes enteras, cada valor puede llevar datos y métodos, y el compilador impide inventar uno que no existe.
 
@@ -1304,7 +1307,7 @@ public enum Clase {
             HabilidadGolpePotente.CODIGO, "Frágil, con mucho maná. Su bastón recarga el maná."),
     DRUIDA("Druida", "druida", 3, 3, 3, "Bastón de roble", 4, 100, 2, 2,
             HabilidadSavia.CODIGO, "Equilibrado: pega y se cura con la savia del bosque."),
-    LADRON("Ladrón", "ladron", 2, 5, 2, "Dagas", 3, 150, 3, 2,
+    LADRON("Pícaro", "ladron", 2, 5, 2, "Dagas", 3, 150, 3, 2,
             HabilidadVeneno.CODIGO, "Ágil: barra más lenta, críticos x3 y veneno.");
 
     // Atributos de cada clase
@@ -1322,7 +1325,7 @@ public enum Clase {
     private final String descripcion;
 ```
 
-Cada línea de arriba (por ejemplo `CABALLERO("Caballero", "caballero", 5, 3, 1, "Espada", 6, 90, 2, 1, ...)`) **crea un objeto** de la clase: los valores entre paréntesis son, en orden, nombre, sprite, Fuerza, Destreza, Inteligencia, nombre del arma, energía que cuesta, porcentaje de daño, multiplicador de crítico, maná que devuelve, código del hechizo inicial y descripción.
+Cada línea de arriba (por ejemplo `CABALLERO("Caballero", "caballero", 5, 3, 1, "Espada", 7, 90, 2, 1, ...)`) **crea un objeto** de la clase: los valores entre paréntesis son, en orden, nombre, sprite, Fuerza, Destreza, Inteligencia, nombre del arma, energía que cuesta, porcentaje de daño, multiplicador de crítico, maná que devuelve, código del hechizo inicial y descripción.
 
 ```java
 public HabilidadArma crearArma() {
@@ -1555,8 +1558,8 @@ Estas son las **fórmulas**. Se calculan cada vez que se piden (no se guardan), 
 | `getEnergiaMaxima` | 6 + 2 × Destreza | Cuántos golpes de arma aguanta el héroe |
 | `getDefensa` | Destreza ÷ 2 (entera) | Resta daño recibido |
 | `getDanioFisico` | 2 + 2 × Fuerza | Base del daño del arma y del Tajo |
-| `getPotenciaMagica` | 3 + 3 × Inteligencia | Daño del Golpe arcano y la Savia |
-| `getPotenciaCuracion` | 6 + 3 × Inteligencia | Cuánto cura la Luz sanadora |
+| `getPotenciaMagica` | 3 + 3 × Inteligencia | Daño del Golpe Arcano y la Savia |
+| `getPotenciaCuracion` | 6 + 3 × Inteligencia | Cuánto cura la Luz Sanadora |
 | `getBonusZonaCritica` | 4 × Destreza | Píxeles extra de zona crítica en la barra |
 | `getFactorVelocidadBarra` | 1 − 0,03 × Destreza, pero nunca menos que 0,5 | Cursor más lento |
 
@@ -2287,7 +2290,7 @@ public int getTipo() {
 
 @Override
 public String getInstruccion() {
-    return "¡Frena la barra con ESPACIO!";
+    return "¡Frena la barra con ESPACIO o con CLICK IZQ!";
 }
 
 // Calidad que daría un golpe frenado en esa posición
@@ -2387,7 +2390,7 @@ public class MinijuegoRafaga extends Minijuego {
 
     @Override
     public String getInstruccion() {
-        return "¡Machaca ESPACIO lo más rápido que puedas!";
+        return "¡Machaca ESPACIO o CLICK IZQ lo más rápido que puedas!";
     }
 
     public int getGolpes() {
@@ -2493,7 +2496,7 @@ public class MinijuegoAnillo extends Minijuego {
 
     @Override
     public String getInstruccion() {
-        return "¡ESPACIO cuando el anillo toque la marca!";
+        return "¡ESPACIO o CLICK IZQ cuando el anillo toque la marca!";
     }
 
     public double getDuracion() {
@@ -2583,8 +2586,8 @@ public static final int ALTO = 640;
 public static final int PISOS = 7;
 private static final int MARGEN_X = 90;
 private static final int SEPARACION_X = 140;
-private static final int ARRIBA = 150;
-private static final int ABAJO = 530;
+private static final int ARRIBA = 172;
+private static final int ABAJO = 492;
 
 // Atributos
 private final long semilla;
@@ -3130,7 +3133,7 @@ private String aplicarHabilidad(Jugador jugador) {
 }
 ```
 
-- `aplicar(jugador)` ejecuta el efecto y **devuelve una descripción corta** (`"+5 vida"`, `"-15 oro"`, `"aprendes Luz sanadora"`) que luego se junta con las demás para mostrar el resumen. `COMBATE` no cambia nada al aplicarse (devuelve `null`): la emboscada la dispara la pantalla.
+- `aplicar(jugador)` ejecuta el efecto y **devuelve una descripción corta** (`"+5 vida"`, `"-15 oro"`, `"aprendes Luz Sanadora"`) que luego se junta con las demás para mostrar el resumen. `COMBATE` no cambia nada al aplicarse (devuelve `null`): la emboscada la dispara la pantalla.
 - Los atributos solo se suben si el valor es positivo (en la práctica nunca bajan).
 - Para un hechizo: si ya lo conoce, avisa; si no hay lugar (máximo 4), avisa; si no, lo aprende.
 
@@ -3252,7 +3255,7 @@ public static Partida nueva(long semilla, ListaEnlazada<EventoNarrativo> eventos
     PilaEnlazada<Integer> ruta = new PilaEnlazada<>();
     ruta.apilar(mapaTemporal.getIdInicio());
     PilaEnlazada<Registro> diario = new PilaEnlazada<>();
-    diario.apilar(new Registro(mapaTemporal.getIdInicio(), "Entras al Sendero Oscuro como " + clase.getNombre() + "."));
+    diario.apilar(new Registro(mapaTemporal.getIdInicio(), "Entras a Solis Umbra como " + clase.getNombre() + "."));
     return new Partida(semilla, new Jugador(clase), ruta, diario, 0, eventos);
 }
 ```
@@ -3275,7 +3278,7 @@ public ListaEnlazada<Integer> getAdyacentesOrdenados() {
 ```
 
 - El constructor valida que nada sea `null`, que la ruta no esté vacía (siempre hay un lugar actual) y que `derrotados` no sea negativo. Después **genera el mapa con la semilla** (`new MapaBosque(semilla)`) y marca los nodos visitados.
-- `nueva(semilla, eventos, clase)` arma una partida desde cero: la ruta con solo el nodo de inicio, el diario con "Entras al Sendero Oscuro como Caballero." (o la clase elegida) y un `Jugador` nuevo **de esa clase**. (Crea un mapa provisorio solo para saber el id del inicio; es barato.)
+- `nueva(semilla, eventos, clase)` arma una partida desde cero: la ruta con solo el nodo de inicio, el diario con "Entras a Solis Umbra como Caballero." (o la clase elegida) y un `Jugador` nuevo **de esa clase**. (Crea un mapa provisorio solo para saber el id del inicio; es barato.)
 - `getAdyacentesOrdenados()` devuelve los mismos destinos pero **ordenados de arriba hacia abajo** según su posición `y` en pantalla. Es un **ordenamiento por inserción** con la lista enlazada: para cada vecino se busca la primera posición cuyo nodo esté más abajo y se lo `insertar` ahí. **Por qué hace falta:** el grafo guarda los vecinos en el orden en que se crearon las aristas, que no tiene nada que ver con cómo se ven en pantalla; sin ordenar, la flecha "arriba" del teclado podía mover el selector hacia abajo. La pantalla del mapa usa esta versión.
 
 ```java
@@ -3574,7 +3577,7 @@ FUERZA=2
 ...
 HABILIDADES=VENENO,CURACION
 RUTA=0,2,6
-REGISTRO=0|Entras al Sendero Oscuro.
+REGISTRO=0|Entras a Solis Umbra.
 ```
 
 ### 7.3 Cargar
@@ -3969,7 +3972,7 @@ public BufferedImage crearImagen(int escala) {
 
 ### 8.3 `CatalogoSprites`
 
-Contiene los **22 dibujos** del juego (los 4 héroes —caballero, mago, druida y ladrón—, 7 enemigos más el Rey Oscuro, 5 íconos del mapa, altar, árbol, antorcha, corazón y poción). Cada uno es una constante `String`. Por ejemplo, el cofre:
+Contiene los **22 dibujos** del juego (los 4 héroes —caballero, mago, druida y pícaro—, 7 enemigos más el Rey Oscuro, 5 íconos del mapa, altar, árbol, antorcha, corazón y poción). Cada uno es una constante `String`. Por ejemplo, el cofre:
 
 ```java
 private static final String DIBUJO_COFRE =
@@ -4063,7 +4066,9 @@ private BufferedImage cargarArchivo(String nombre, int escala) {
 
 ### 8.5 `TextoPixel`
 
-Dibuja texto con letra gruesa de aspecto retro y una **sombra negra** desplazada 2 píxeles (se lee bien sobre cualquier fondo). Tiene una **escala global** (`TextoPixel.setEscala`) que la pantalla de opciones cambia: todo el texto del juego se multiplica por ese número (0,9 / 1,0 / 1,15) sin tocar el código de cada pantalla.
+Dibuja el texto del juego con las **fuentes pixel-art del equipo** (`src/ui/Fuentes`, cargadas por `Fuentes`): *Alkhemikal* para el cuerpo y los números y *gothic-pixel-font* para los títulos. Cada texto lleva una **sombra negra** desplazada (se lee bien sobre cualquier fondo; sobre el pergamino claro se puede apagar con `conSombra = false`). Como las fuentes pixel se ven más chicas que una común, se multiplican por un ajuste (`AJUSTE_CUERPO = 1,22`). Tiene una **escala global** (`TextoPixel.setEscala`) que la pantalla de opciones cambia: todo el texto del juego se multiplica por ese número (0,9 / 1,0 / 1,15) sin tocar el código de cada pantalla.
+
+Los métodos `izquierda`, `centrado`, `derecha` y `parrafo` usan la letra de cuerpo; los `titulo...` usan la gótica. La fuente gótica **no tiene tildes ni números**, y Alkhemikal no tiene flechas ni corazones: por eso un método interno (`recorrer`) dibuja **cada carácter con la primera fuente que lo tenga** (gótica → cuerpo → fuente del sistema) y el texto nunca sale con cuadraditos. `tituloConIniciales` dibuja títulos "de libro" con la primera letra de cada palabra más grande y roja, y `parrafoResaltado` / `centradoResaltado` pintan en dorado las palabras en MAYÚSCULAS de 4 letras o más (así las instrucciones destacan ENERGÍA, ESPACIO, CLICK...).
 
 ```java
 public static ListaEnlazada<String> cortarEnLineas(Graphics2D g, String texto, int anchoMax, int tamanio) {
@@ -4093,7 +4098,7 @@ public static ListaEnlazada<String> cortarEnLineas(Graphics2D g, String texto, i
 
 ### 8.6 `DibujoMedieval`
 
-Funciones estáticas de dibujo. Es "el ejemplo de renderizado medieval en Graphics2D" del enunciado.
+Funciones estáticas de dibujo. Es "el ejemplo de renderizado medieval en Graphics2D" del enunciado. Después de integrar el arte del equipo, el bosque y los sprites dibujados con texto quedaron como **respaldo** (se usan solo si falta una imagen de `src/ui`); `dibujarSenderosYClaros` es la parte que sigue en uso: dibuja los caminos punteados y los claros de cada lugar **encima** del fondo `FondoMinimapa.png`.
 
 ```java
 public static BufferedImage crearFondoBosque(GestorSprites sprites, int ancho, int alto, long semilla) {
@@ -4212,6 +4217,37 @@ Una herramienta aparte (tiene su propio `main`): guarda los 22 sprites como `.pn
 
 ---
 
+### 8.8 Arte de la interfaz (`src/ui`): `ImagenesUi`, `Fuentes`, `Personajes` y `TextoPixel`
+
+> Esta parte se agregó cuando se integró el arte hecho por el compañero de equipo. Los sprites dibujados con letras
+> (`Sprites`, `Paleta`) siguen existiendo como **respaldo**: si falta una imagen, el juego no se cae y usa el dibujo simple.
+
+**`ImagenesUi`** carga y guarda en una lista (`ListaEnlazada`, no `java.util`) las imágenes PNG de la carpeta `src/ui`.
+La primera vez que se pide una imagen se lee del disco; las siguientes salen de la lista. Busca primero en el classpath
+(`/ui/<ruta>`) y después en el archivo `src/ui/<ruta>`. Todas las imágenes del equipo tienen unos 36 píxeles de borde
+transparente, así que la clase calcula la **caja visible** de cada una (la parte que realmente se ve) y dibuja con
+`dibujar(g, ruta, x, y)` poniendo **esa** esquina en `x, y`. Eso permite usar las coordenadas medidas sobre las maquetas
+(`GuiaP`). Otros métodos: `dibujarCentrado`, `dibujarEstirada` (para fondos), `dibujarSinFilas` (el panel del HUD se
+recorta en el medio para que sea más angosto) y `dibujarPersonaje` (achica con calidad y ancla los **pies** del sprite).
+`recortada(ruta)` devuelve la imagen sin su borde, y es lo que usa `VentanaJuego` para el ícono. Si una imagen no existe,
+`dibujar` devuelve `false` y avisa por consola.
+
+**`Fuentes`** carga `Alkhemikal.ttf` (texto y números) y `gothic-pixel-font.ttf` (títulos). Si no las encuentra usa una
+fuente del sistema.
+
+**`TextoPixel`** conserva su API y suma: títulos góticos (`tituloIzquierda`, `tituloCentrado`, `tituloConIniciales` con la
+primera letra de cada palabra en rojo y más grande), párrafos que resaltan en dorado las palabras en MAYÚSCULAS
+(`parrafoResaltado`, `centradoResaltado`) y un **respaldo por letra**: si la fuente no tiene un símbolo (flechas, acentos,
+dígitos en la gótica), ese carácter se dibuja con otra fuente.
+
+**`Personajes`** es una tabla con el nombre del archivo de cada personaje en cada pose (`NORMAL`, `ATAQUE`, `DANIADO`,
+`MUERTO`). Todos los sprites se dibujan con la misma escala (`ESCALA = 0,265`) y apoyados en el suelo (`SUELO = 384`);
+el héroe va en x = 310 y el enemigo en x = 715. `EscenaCombate` cambia la pose con temporizadores: ataque 0,7 s y daño
+con una sacudida.
+
+**Ventana:** `VentanaJuego` usa `ico.png` como ícono (`configurarIcono`) y el puntero de `src/ui/Puntero` como cursor
+(`configurarPuntero`); además activa interpolación bilineal al escalar el cuadro de 1024x640.
+
 ## 9. Paquetes `juego.recursos` y `juego.pantallas`
 
 ### 9.1 `Recursos`
@@ -4229,7 +4265,16 @@ public Recursos(String carpetaDatos, String carpetaAssets) {
 ```java
 public BufferedImage getFondoMapa(MapaBosque mapa) {
     if (fondoMapa == null || semillaFondoMapa != mapa.getSemilla()) {
-        fondoMapa = DibujoMedieval.crearFondoMapa(sprites, mapa);
+        BufferedImage nuevo = new BufferedImage(MapaBosque.ANCHO, MapaBosque.ALTO, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = nuevo.createGraphics();
+        if (ui.dibujarEstirada(g, "Fondos/FondoMinimapa.png", 0, 0, MapaBosque.ANCHO, MapaBosque.ALTO)) {
+            DibujoMedieval.dibujarSenderosYClaros(g, mapa);
+            g.dispose();
+            fondoMapa = nuevo;
+        } else {
+            g.dispose();
+            fondoMapa = DibujoMedieval.crearFondoMapa(sprites, mapa);
+        }
         semillaFondoMapa = mapa.getSemilla();
     }
     return fondoMapa;
@@ -4238,7 +4283,9 @@ public BufferedImage getFondoMapa(MapaBosque mapa) {
 
 Reúne los objetos que **comparten todas las pantallas**: el gestor de archivos, el gestor de sprites, la lista de eventos (se lee **una sola vez** al iniciar) y los fondos ya dibujados. Se crea una vez en `Main` y se va pasando de pantalla en pantalla.
 
-`getFondoMapa` vuelve a dibujar el fondo solo si **cambió la semilla** (es decir, si es otra partida). Por eso volver al mapa después de un combate es instantáneo.
+`getFondoMapa` vuelve a armar el fondo solo si **cambió la semilla** (es decir, si es otra partida). Ahora el fondo es la imagen `Fondos/FondoMinimapa.png` (el muro del calabozo) estirada a 1024×640, con los senderos y claros dibujados encima por `DibujoMedieval.dibujarSenderosYClaros`; si falta la imagen se usa el bosque dibujado por código. Por eso volver al mapa después de un combate es instantáneo.
+
+`Recursos` también guarda el **`ImagenesUi`** (`getUi()`), el objeto que carga y cachea todas las imágenes de `src/ui`; así todas las pantallas comparten una sola copia de cada imagen (ver 8.8).
 
 **Por qué es un paquete aparte:** si `Recursos` estuviera en el paquete `juego` junto con `Main`, habría un ciclo (`juego` ↔ `juego.pantallas`).
 
@@ -4252,33 +4299,18 @@ public class Main {
     // están en la raíz del proyecto.
     public static void main(String[] args) {
         Recursos recursos = new Recursos("datos", "assets");
-        VentanaJuego.abrir("El Sendero Oscuro", recursos.getOpciones(), new EscenaMenu(recursos));
+        VentanaJuego.abrir("Solis Umbra", recursos.getOpciones(), new EscenaMenu(recursos));
     }
 }
 ```
 
 Crea los recursos (que leen también `opciones.txt`) y abre **nuestra propia ventana** (`VentanaJuego`, ver 9.11) con el menú como escena inicial. Se hizo una ventana propia porque la `Ventana` del kit tiene un tamaño fijo y no puede cambiar de modo de pantalla ni aplicar brillo.
 
-## 10. El motor del kit (lo mínimo que hay que saber)
-
-El kit del profesor resuelve la ventana, el reloj y el teclado. Lo que hay que entender para leer las pantallas:
-
-- Una **`Escena`** es una pantalla. Las nuestras **extienden** `Escena` y escriben tres métodos:
-  - `alEntrar()`: se ejecuta una vez al abrir la escena (opcional).
-  - `actualizar(double dt)`: se ejecuta **120 veces por segundo**; `dt` (1/120 s) es el tiempo transcurrido. Acá se lee la entrada y se actualiza el estado.
-  - `dibujar(Graphics2D g)`: se ejecuta para pintar el cuadro. **Solo dibuja**, no cambia el estado.
-- `getEntrada()` da acceso al teclado y al mouse:
-  - `fuePresionada(tecla)`: `true` **solo en el cuadro en que se apretó** (para acciones de una sola vez: elegir, confirmar).
-  - `estaPresionada(tecla)`: `true` mientras se mantiene apretada (para movimiento continuo).
-  - `huboClick()`, `getMouseX()`, `getMouseY()`.
-- `getContexto().irA(otraEscena)`: cambia de pantalla. El cambio se hace al **comienzo del próximo paso**, no de inmediato.
-- `getContexto().salir()`: cierra el juego.
-
-Como las escenas solo dependen de `Escena` y `Entrada`, **se pueden probar sin ventana**: `Motor` tiene `simular(segundos)` (avanza el reloj) y `capturar()` (dibuja en una imagen en memoria). Es lo que hace `PruebaJuego`.
-
 ### 9.3 `Hud` y `Adornos`
 
-`Hud.dibujarFranja` dibuja arriba el panel de estado: corazón con barra de vida, gota con barra de maná, **barra verde de energía**, oro, atributos (FUE, DES, INT, DEF) y el **nombre de la clase**. La comparten el mapa, los eventos y el combate para que se vea **siempre igual**. `Adornos.antorcha` dibuja una antorcha con **llama que parpadea**: un halo naranja de 4 capas cuyo radio cambia con `Math.sin(tiempo)` mezclando dos frecuencias para que el parpadeo parezca irregular.
+`Hud.dibujarFranja` dibuja arriba el panel de estado, ahora **armado con imágenes** de `src/ui/GUIBatalla`: el marco dorado (`ContenedorMiniMap.png`, al que `dibujarSinFilas` le saca unas filas del medio para que quede de 100 px de alto), los íconos de corazón, maná, energía y oro, el contenedor de atributos (FUE, DES, INT, DEF, con los números dibujados encima) y el retrato y el nombre de la clase (`PerfilClase<letra>.png` y `NomClase<letra>.png`; la letra es C, M, D o P y la da `Hud.letra`). Las tres barras (vida, maná y energía) **no son imágenes**: `barra` y `barraGrande` las dibujan con rectángulos (borde dorado, fondo oscuro y relleno proporcional a `valor / maximo`) y el texto `valor/máximo` adentro. `barraGrande` también la usa el combate para la vida del enemigo. La franja la comparten el mapa, los eventos y el combate para que se vea **siempre igual**; la energía ahora se muestra siempre.
+
+`Adornos.antorcha` dibuja una antorcha con **llama que parpadea**: un halo naranja de 4 capas cuyo radio cambia con `Math.sin(tiempo)` mezclando dos frecuencias para que el parpadeo parezca irregular (con el arte nuevo ya casi no se usa).
 
 ### 9.4 `EscenaMenu`
 
@@ -4295,6 +4327,11 @@ public void actualizar(double dt) {
     }
     if (entrada.fuePresionada(KeyEvent.VK_DOWN) || entrada.fuePresionada(KeyEvent.VK_S)) {
         seleccion = (seleccion + 1) % CANTIDAD;
+    }
+    // ← → pasan de la columna izquierda a la derecha (y al revés) en la misma fila
+    if (entrada.fuePresionada(KeyEvent.VK_LEFT) || entrada.fuePresionada(KeyEvent.VK_A)
+            || entrada.fuePresionada(KeyEvent.VK_RIGHT) || entrada.fuePresionada(KeyEvent.VK_D)) {
+        seleccion = (seleccion + 2) % CANTIDAD;
     }
 
     // Mouse: pasar por encima selecciona, hacer click confirma
@@ -4337,13 +4374,46 @@ private void confirmar() {
 }
 ```
 
-- `actualizar`: cada cuadro suma `dt` al `tiempo` (para las animaciones) y lee la entrada. Las flechas cambian `seleccion` con **aritmética modular**: `(seleccion + 1) % OPCIONES` vuelve a 0 después de la última; `(seleccion + OPCIONES - 1) % OPCIONES` vuelve a la última antes de la primera (se suma `OPCIONES` para que nunca sea negativo). El mouse también selecciona y confirma.
+- `actualizar`: cada cuadro suma `dt` al `tiempo` (para las animaciones) y lee la entrada. Los cuatro botones forman una **grilla de 2×2** (Nueva partida y Continuar a la izquierda; Opciones y Salir a la derecha). Las flechas ↑ ↓ recorren los cuatro botones con **aritmética modular**: `(seleccion + 1) % CANTIDAD` vuelve a 0 después del último; `(seleccion + CANTIDAD - 1) % CANTIDAD` vuelve al último antes del primero (se suma `CANTIDAD` para que nunca sea negativo). Las flechas ← → pasan a la otra columna con `(seleccion + 2) % CANTIDAD`. El mouse también selecciona y confirma: `centroX` y `centroY` dan el centro de cada botón y `estaSobreOpcion` compara la posición del mouse con ese centro.
 - `alEntrar` deja marcada "Continuar" si ya hay una partida guardada.
 - `confirmar`:
   - **Nueva partida**: abre `EscenaClases` (la elección de clase; ahí se crea la partida).
   - **Continuar**: si existe el archivo, intenta `cargar`. Si devuelve `null` muestra "El archivo de guardado está dañado" **sin cerrar el juego**; si no, abre el mapa con la partida cargada.
   - **Opciones**: abre `EscenaOpciones`, pasándole `this` para poder **volver** al menú.
   - **Salir**: `getContexto().salir()`.
+
+```java
+public void dibujar(Graphics2D g) {
+    ImagenesUi ui = recursos.getUi();
+    // Fondo (una captura con borde de ventana: se le sacan 2 px por lado y se estira a toda la pantalla)
+    if (!ui.dibujarVisibleEstirada(g, "MenuTitulo/Fondo.png", 0, 0, ANCHO, ALTO, 2)) {
+        g.setColor(Paleta.NEGRO);
+        g.fillRect(0, 0, ANCHO, ALTO);
+    }
+
+    // Logo con un suave vaivén
+    double flota = Math.sin(tiempo * 1.6) * 3;
+    ui.dibujarCentrado(g, "MenuTitulo/Logo Juego.png", ANCHO / 2.0, 168 + flota);
+
+    // Botones: oscuros con rombos, amarillos el elegido y sin rombos "Continuar" si no hay partida guardada
+    boolean hayGuardado = recursos.getArchivos().existeGuardado();
+    for (int i = 0; i < CANTIDAD; i++) {
+        String estado = "Activo";
+        if (i == seleccion) {
+            estado = "Hold";
+        } else if (i == CONTINUAR && !hayGuardado) {
+            estado = "Normal";
+        }
+        ui.dibujarCentrado(g, "MenuTitulo/" + archivoDe(i) + estado + ".png", centroX(i), centroY(i));
+    }
+
+    if (tiempoAviso > 0) {
+        TextoPixel.centrado(g, aviso, ANCHO / 2.0, 590, 20, new Color(255, 140, 120));
+    }
+}
+```
+
+- `dibujar` pone la imagen de fondo (`MenuTitulo/Fondo.png`, es una captura con borde de ventana: `dibujarVisibleEstirada` le saca 2 píxeles por lado y la estira a toda la pantalla), el **logo** centrado con un vaivén suave (`Math.sin(tiempo * 1.6) * 3`) y los cuatro botones. Cada botón tiene **tres imágenes** (por ejemplo `NJuegoActivo.png`, `NJuegoHold.png` y `NJuegoNormal.png`): `Hold` (amarillo) es el botón **elegido**, `Activo` (oscuro con rombos) el que está libre y `Normal` se usa solo para **Continuar cuando no hay partida guardada** (se ve apagado). Si hay un aviso (por ejemplo "No hay una partida guardada.") se escribe abajo durante 3 segundos.
 
 ### 9.5 `EscenaMapa`: dibujar el grafo y navegarlo
 
@@ -4432,12 +4502,14 @@ private void dibujarNodos(Graphics2D g) {
 }
 ```
 
-Cada lugar es un **disco** (borde negro + relleno según el tipo) con el **ícono** encima: calavera (combate), `?` (evento), cofre, jefe con corona, o fogata (inicio). Según el estado:
+Cada lugar es un **disco** (borde negro + relleno según el tipo) con el **ícono** encima: calavera (combate), `?` (evento), cofre, jefe con corona, o fogata (inicio). Esas figuras son los sprites chicos que dibuja `CatalogoSprites` (se mantuvieron: el arte nuevo no trae íconos de mapa). Según el estado:
 
 - **Visitado**: anillo dorado e ícono tenue (`AlphaComposite` con 45% de opacidad).
 - **Vecino elegible**: anillo blanco que **pulsa** con `Math.sin(tiempo * 5)`. El elegido tiene el anillo más grueso, una flecha y su nombre debajo.
 
 `dibujarHeroe` pinta al héroe encima del lugar actual, **saltando** con `Math.abs(Math.sin(tiempo * 3))`.
+
+**El resto de la pantalla:** el fondo es `Recursos.getFondoMapa` (el muro del calabozo con los caminos encima), arriba va la franja del `Hud` y abajo el **panel inferior** (`dibujarPanelInferior`): la imagen `ContenedorMiniMap.png` con el piso actual ("Piso 2 de 6. Elige tu camino."), el tipo de destino elegido (`pista`) y la lista de teclas. Las teclas se escriben con el método auxiliar `tecla`, que pone la tecla en dorado y la acción en blanco y devuelve dónde empieza la siguiente. Para ubicar los nodos entre la franja y el panel se achicó el rango vertical del mapa: `ARRIBA = 172` y `ABAJO = 492` en `MapaBosque`.
 
 La tecla **O** abre las opciones (se vuelve al mapa con ESC) y **G** guarda. La tecla **H** abre el diario: usa `partida.getUltimosRegistros(8)` (la pila inspeccionada con la auxiliar).
 
@@ -4481,9 +4553,11 @@ private void terminar() {
 - El texto aparece **letra por letra** (máquina de escribir): `letrasVisibles = tiempo × 55`.
 - Las teclas `1`, `2`, `3` eligen directamente: `KeyEvent.VK_1 + i` aprovecha que los códigos de las teclas numéricas son consecutivos.
 
+**Cómo se ve:** sobre el fondo del bosque va un **pergamino** (`MenuEventoAlea/ContenedorAlea.png`) con el título del evento en letra gótica y la primera letra de cada palabra más grande y roja (`tituloConIniciales`), el relato debajo (`parrafoResaltado`, que destaca en dorado las palabras en MAYÚSCULAS), y a los costados el cofre o el altar y el sprite de la clase. Las opciones van en un cuadro aparte (`ContenedorSeleccion.png`) con una flecha dorada (`FlechaSeleccion.png`) junto a la elegida. Como el click se decide por posición, `EscenaEvento` calcula la fila bajo el mouse con las mismas coordenadas con las que dibuja (`y = 428 + i × 41`).
+
 ### 9.7 `EscenaCombate`
 
-Es la pantalla más grande, pero casi toda su lógica es **dibujo**: las reglas están en `Combate`. La escena hace de **intermediaria**: lee teclas → llama a `Combate` → dibuja el estado.
+Es la pantalla más grande, pero casi toda su lógica es **dibujo**: las reglas están en `Combate`. La escena hace de **intermediaria**: lee teclas → llama a `Combate` → dibuja el estado. Con el arte del equipo se dibuja así: fondo del calabozo (`FondoDungeon.png`, o `FondoJefeFinal.png` si es el jefe), la franja del `Hud`, el héroe a la izquierda y el enemigo a la derecha (sprites de `SpriteSheets`, con **cuatro poses** cada uno), y abajo un **panel**: `ContenLogMenuBat.png` cuando se elige la acción y `ContenedorMiniJuego.png` cuando hay minijuego o mensaje.
 
 ```java
 public void actualizar(double dt) {
@@ -4536,7 +4610,7 @@ Todos los cuadros se llama `combate.actualizar(dt)` (mueve el minijuego), `detec
 
 **El menú estilo Pokémon.** Hay tres menús que se alternan con la variable `menu`:
 
-- `PRINCIPAL`: cuatro opciones en 2×2 (**Luchar**, **Magia**, **Defender**, **Huir**).
+- `PRINCIPAL`: cuatro botones en 2×2 con imagen (**Luchar**, **Magia**, **Defender** y **Correr**, que es la acción "huir"). El botón elegido usa la imagen `...Activo.png` (amarilla) y los demás `...Normal.png`; las acciones que no se pueden usar se dibujan con 45 % de opacidad (`AlphaComposite`).
 - `LUCHAR`: el arma de la clase, los puños y "Volver" (cada uno muestra su costo de energía).
 - `MAGIA`: los hechizos del repertorio (con su costo de maná) y "Volver".
 
@@ -4628,44 +4702,47 @@ private void detectarGolpes() {
     Jugador jugador = partida.getJugador();
     if (enemigo.getVida() < vidaEnemigoPrevia) {
         sacudidaEnemigo = 0.4;
-        flotantes.agregar(new Flotante("-" + (vidaEnemigoPrevia - enemigo.getVida()), 740, 230, Paleta.ORO));
+        ataqueJugador = 0.7;
+        flotantes.agregar(new Flotante("-" + (vidaEnemigoPrevia - enemigo.getVida()), 715, 250, Paleta.ORO));
     }
     if (jugador.getVida() < vidaJugadorPrevia) {
         sacudidaJugador = 0.4;
-        flotantes.agregar(new Flotante("-" + (vidaJugadorPrevia - jugador.getVida()), 250, 260, new Color(255, 90, 90)));
+        ataqueEnemigo = 0.7;
+        flotantes.agregar(new Flotante("-" + (vidaJugadorPrevia - jugador.getVida()), 310, 270, new Color(255, 90, 90)));
     } else if (jugador.getVida() > vidaJugadorPrevia) {
-        flotantes.agregar(new Flotante("+" + (jugador.getVida() - vidaJugadorPrevia), 250, 260, new Color(120, 255, 140)));
+        flotantes.agregar(new Flotante("+" + (jugador.getVida() - vidaJugadorPrevia), 310, 270, new Color(120, 255, 140)));
     }
     vidaEnemigoPrevia = enemigo.getVida();
     vidaJugadorPrevia = jugador.getVida();
 }
 ```
 
-**Sacudida y números flotantes:** cada cuadro se compara la vida actual con la del cuadro anterior (`vidaEnemigoPrevia`, `vidaJugadorPrevia`). Si bajó, se activa la **sacudida** (un movimiento rápido con `Math.sin(tiempo * 90)` que se apaga en 0,4 s) y se agrega a la lista un **número flotante** (`-8`). Si la vida del jugador subió, el número es verde (`+15`). Cada `Flotante` sube y se desvanece; cuando su vida llega a 0 se **elimina de la lista** (un `while` con índice que solo avanza si no se eliminó nada).
+**Poses, sacudida y números flotantes:** cada cuadro se compara la vida actual con la del cuadro anterior (`vidaEnemigoPrevia`, `vidaJugadorPrevia`). Si la del enemigo bajó, el héroe pasa a la pose **de ataque** durante 0,7 s (`ataqueJugador`) y el enemigo se **sacude** 0,4 s (`sacudidaEnemigo`, un movimiento rápido con `Math.sin(tiempo * 90)`); con la vida del jugador pasa lo mismo al revés. `poseDe` elige la imagen: **muerto** si ya no tiene vida, **dañado** mientras dura la sacudida, **ataque** mientras dura el temporizador y **normal** el resto del tiempo (y en esa pose flota suavemente con `Math.sin`). Además se agrega a la lista un **número flotante** (`-8`, o `+6` verde si el jugador se curó). `Personajes` (ver 8.8) sabe qué archivo corresponde a cada personaje y pose y los dibuja a la misma escala, apoyados en el suelo.
+
 
 La escena no sabe *por qué* cambió la vida; solo observa el cambio. Eso la mantiene separada de la lógica.
 
 ```java
 private void dibujarOrdenDeTurnos(Graphics2D g) {
-    TextoPixel.izquierda(g, "Peligro " + combate.getNivel() + "/" + Dificultad.NIVEL_MAXIMO, 24, 104, 14, Paleta.PERGAMINO);
+    TextoPixel.izquierda(g, "Peligro " + combate.getNivel() + "/" + Dificultad.NIVEL_MAXIMO, 25, 152, 20, Paleta.ORO);
     ColaEnlazada<Integer> orden = combate.getOrdenDeTurnos();
-    TextoPixel.izquierda(g, "Turnos:", 640, 104, 14, Paleta.PERGAMINO);
-    int x = 720;
+    TextoPixel.izquierda(g, "Turnos:", 859, 152, 20, Paleta.ORO);
+    int x = 861;
     boolean primero = true;
     while (!orden.estaVacia()) {
         int quien = orden.desencolar();
-        Color color = quien == Combate.JUGADOR ? Paleta.AZUL : Paleta.ROJO;
-        g.setColor(Paleta.NEGRO);
-        g.fillOval(x - 3, 86, 28, 28);
+        Color color = quien == Combate.JUGADOR ? new Color(36, 150, 240) : new Color(226, 30, 30);
+        g.setColor(Paleta.ORO);
+        g.fillOval(x - 2, 164, 40, 40);
         g.setColor(color);
-        g.fillOval(x, 89, 22, 22);
+        g.fillOval(x, 166, 36, 36);
         if (primero) {
-            g.setColor(Paleta.ORO);
-            g.drawOval(x - 3, 86, 28, 28);
+            g.setColor(Color.WHITE);
+            g.drawOval(x - 2, 164, 39, 39);
             primero = false;
         }
-        TextoPixel.izquierda(g, quien == Combate.JUGADOR ? "T" : "E", x + 6, 106, 14, Paleta.HUESO);
-        x = x + 36;
+        TextoPixel.tituloCentrado(g, quien == Combate.JUGADOR ? "T" : "E", x + 18, 192, 22, Color.WHITE);
+        x = x + 44;
     }
 }
 ```
@@ -4674,7 +4751,7 @@ private void dibujarOrdenDeTurnos(Graphics2D g) {
 
 ```java
 private void dibujarMinijuego(Graphics2D g, Minijuego minijuego) {
-    TextoPixel.centrado(g, minijuego.getInstruccion(), ANCHO / 2.0, 462, 20, Paleta.ORO);
+    TextoPixel.centradoResaltado(g, minijuego.getInstruccion(), ANCHO / 2.0, 487, 22, Paleta.HUESO, Paleta.ORO);
     if (minijuego.getTipo() == Minijuego.TIPO_BARRA) {
         dibujarBarra(g, combate.getBarra());
     } else if (minijuego.getTipo() == Minijuego.TIPO_RAFAGA) {
@@ -4690,7 +4767,7 @@ private void dibujarMinijuego(Graphics2D g, Minijuego minijuego) {
 ```java
 private void dibujarBarra(Graphics2D g, BarraPrecision barra) {
     int x = (ANCHO - (int) BarraPrecision.ANCHO) / 2;
-    int y = 510;
+    int y = 534;
     int alto = 56;
     g.setColor(Paleta.NEGRO);
     g.fillRect(x - 5, y - 5, (int) BarraPrecision.ANCHO + 10, alto + 10);
@@ -4713,12 +4790,12 @@ private void dibujarBarra(Graphics2D g, BarraPrecision barra) {
 }
 ```
 
-**La barra de precisión:** se pintan tres rectángulos centrados: la zona de fondo (rojo oscuro), la **zona normal** (dorado) con el ancho que dice la barra, y la **zona crítica** (naranja) encima. Una línea blanca marca el centro. El **cursor** es un rectángulo blanco con borde negro en `x + barra.getPosicion()`. Todos los anchos vienen de la propia `BarraPrecision`: la pantalla **no calcula nada**, solo dibuja lo que la lógica le dice; por eso con más Destreza la zona crítica se ve más ancha.
+**La barra de precisión:** se pintan tres rectángulos centrados: el fondo (marrón oscuro), la **zona normal** (dorada) con el ancho que dice la barra, y la **zona crítica** (naranja) encima. Una línea clara marca el centro. El **cursor** es un rectángulo blanco con borde negro en `x + barra.getPosicion()`. Todos los números salen de la barra (`getAnchoNormal`, `getAnchoCritico`, `getPosicion`): **la pantalla no calcula nada**. Las tres pantallas de minijuego se resuelven con **ESPACIO o con CLICK IZQUIERDO**, y la instrucción se escribe arriba con `centradoResaltado` (destaca ESPACIO y CLICK IZQ en dorado).
 
 ```java
 private void dibujarRafaga(Graphics2D g, MinijuegoRafaga rafaga) {
     int x = 212;
-    int y = 500;
+    int y = 518;
     int ancho = 600;
     int alto = 44;
     g.setColor(Paleta.NEGRO);
@@ -4738,9 +4815,9 @@ private void dibujarRafaga(Graphics2D g, MinijuegoRafaga rafaga) {
     // Tiempo restante
     double resto = rafaga.getTiempoRestante() / MinijuegoRafaga.DURACION;
     g.setColor(Paleta.NEGRO);
-    g.fillRect(x - 3, 598, ancho + 6, 16);
+    g.fillRect(x - 3, 604, ancho + 6, 16);
     g.setColor(new Color(90, 150, 220));
-    g.fillRect(x, 601, (int) (ancho * resto), 10);
+    g.fillRect(x, 607, (int) (ancho * resto), 10);
 }
 ```
 
@@ -4748,7 +4825,7 @@ private void dibujarRafaga(Graphics2D g, MinijuegoRafaga rafaga) {
 private void dibujarAnillo(Graphics2D g, MinijuegoAnillo anillo) {
     double escala = 0.6;
     int cx = ANCHO / 2;
-    int cy = 545;
+    int cy = 556;
     double rObjetivo = MinijuegoAnillo.RADIO_OBJETIVO * escala;
     double rNormal = anillo.getToleranciaNormal() * escala;
     double rCritico = anillo.getToleranciaCritica() * escala;
@@ -4779,11 +4856,53 @@ Otra vez: la escena solo dibuja lo que la lógica dice.
 
 ### 9.8 `EscenaFin`
 
-Muestra la victoria o la derrota con el resumen (enemigos derrotados, lugares recorridos, oro, atributos y el último registro del diario, tomado con `getUltimosRegistros(1)`). Con ENTER vuelve al menú. Ignora la entrada durante el primer medio segundo para evitar saltearla sin querer. Muestra el sprite de la **clase** elegida.
+Muestra la victoria o la derrota con el arte del equipo: el fondo (`FondoVictoria.png` o `FondoDerrota.png`) estirado a toda la pantalla, el título de la victoria (`TituloVictoria.png`) y un cuadro de resumen (`ContenedorVictoria.png` / `ContenedorDerrota.png`) cuya pestaña ya trae escrita la frase ("...Y un día, el Sol, volvió a salir..." o "...la muerte es solo el principio de tu camino..."). La derrota usa `dibujarVisibleEstirada` (la imagen trae un borde transparente que se descarta) y la victoria `dibujarEstirada`. Dentro del cuadro se escribe el resumen:
+
+```java
+public void dibujar(Graphics2D g) {
+    ImagenesUi ui = recursos.getUi();
+    // Fondo, título y cuadro de resumen: la victoria y la derrota usan el mismo diseño con imágenes distintas
+    double yCuadro;
+    if (victoria) {
+        if (!ui.dibujarEstirada(g, "PantallaVictoria/FondoVictoria.png", 0, 0, ANCHO, 640)) {
+            g.setColor(Paleta.NEGRO);
+            g.fillRect(0, 0, ANCHO, 640);
+        }
+        ui.dibujar(g, "PantallaVictoria/TituloVictoria.png", 365, 6);
+        yCuadro = 404;
+        ui.dibujar(g, "PantallaVictoria/ContenedorVictoria.png", 112, yCuadro);
+    } else {
+        if (!ui.dibujarVisibleEstirada(g, "PantallaDerrota/FondoDerrota.png", 0, 0, ANCHO, 640, 0)) {
+            g.setColor(Paleta.NEGRO);
+            g.fillRect(0, 0, ANCHO, 640);
+        }
+        yCuadro = 370;
+        ui.dibujar(g, "PantallaDerrota/ContenedorDerrota.png", 115, yCuadro);
+    }
+
+    // Resumen: las etiquetas en blanco y los números en dorado
+    Jugador j = partida.getJugador();
+    double y = yCuadro + 97;
+    dato(g, 156, y, "Enemigos derrotados: ", String.valueOf(partida.getDerrotados()));
+    dato(g, 156, y + 35, "Lugares recorridos: ", String.valueOf(partida.getRuta().tamanio() - 1));
+    dato(g, 156, y + 70, "Oro recolectado: ", String.valueOf(j.getOro()));
+    dato(g, 488, y, "FUE: ", j.getFuerza() + "   DES: " + j.getDestreza() + "   INT: " + j.getInteligencia());
+    ListaEnlazada<Registro> ultimos = partida.getUltimosRegistros(1);
+    if (!ultimos.estaVacia()) {
+        TextoPixel.izquierda(g, "Último registro:", 488, y + 44, 15, Paleta.HUESO);
+        TextoPixel.parrafo(g, ultimos.obtener(0).getTexto(), 488, y + 72, 380, 19, Paleta.ORO);
+    }
+    TextoPixel.centrado(g, "ENTER para volver al menú", ANCHO / 2.0, victoria ? 632 : 612, 15, Paleta.HUESO);
+}
+```
+
+- Cada dato lo escribe el método auxiliar `dato`: la **etiqueta en blanco** y el **número en dorado**, uno a continuación del otro (se usa `TextoPixel.anchoDe` para saber dónde termina la etiqueta).
+- Los datos son: enemigos derrotados, lugares recorridos (el tamaño de la **ruta**, una lista, menos 1: el inicio no cuenta), oro, los tres atributos y el **último registro del diario**, tomado con `getUltimosRegistros(1)` (la cima de la pila).
+- Con ENTER, ESPACIO o click vuelve al menú. Ignora la entrada durante el primer medio segundo (`tiempo > 0.5`) para no saltearla sin querer.
 
 ### 9.9 `EscenaClases`
 
-Es la pantalla que aparece al elegir "Nueva partida": cuatro tarjetas (Caballero, Mago, Druida, Ladrón) con su sprite, atributos, arma y hechizo inicial.
+Es la pantalla que aparece al elegir "Nueva partida": cuatro tarjetas (Caballero, Mago, Druida, Pícaro; en el código sigue siendo `LADRON`) con su imagen, atributos, arma y hechizo inicial.
 
 ```java
 public void actualizar(double dt) {
@@ -4827,10 +4946,14 @@ private void empezar() {
 - ← → mueven la selección con aritmética modular (`(seleccion + 1) % Clase.CANTIDAD`) y las teclas `1` a `4` eligen directo. ENTER confirma, ESC vuelve al menú.
 - `empezar` calcula la **semilla** con el reloj (`System.currentTimeMillis() % 100000`: cada aventura tiene su propio mapa), crea la partida con `Partida.nueva(semilla, eventos, Clase.porOrden(seleccion))` y abre el mapa.
 - Las tarjetas se dibujan en un `for` sobre `Clase.CANTIDAD` pidiendo cada clase con `Clase.porOrden(i)`: **agregar una clase nueva no cambia esta pantalla**.
+- Cada tarjeta es una imagen de `src/ui/MenuClase` (`Caballero`, `Mago`, `Druida` y `Pícaro`; la elegida tiene una versión con resplandor), de 252×471, y se ubica en `x = 9 + i × 249`, `y = 101`. La tarjeta elegida se dibuja **al final** y levantada 8 píxeles (así su resplandor queda por encima de las vecinas). El título (`MenuClase/Titulo.png`) y la ayuda de teclas completan la pantalla.
 
 ### 9.10 `EscenaOpciones` y `Opciones`
 
 La pantalla de opciones permite cambiar el **modo de pantalla** (la fila se llama "Resolución"), el **brillo** y el **tamaño del texto**. `Opciones` es la clase que guarda esos tres valores.
+
+El fondo es `FondoMinimapa.png` con el marco `Opciones/CuadroOpciones.png` encima y el título "Opciones" en letra gótica. Cada fila escribe su nombre y su valor con la fuente de cuerpo; las **flechas** de la fila elegida son la imagen `Opciones/IconoActivo_1.png`: la de la izquierda es la misma imagen **espejada** (`g.scale(-1, 1)`) y las dos se mueven apenas con `Math.sin`. Las posiciones de las filas están en constantes (`X_FILA`, `Y_FILA`, `SEPARACION`...) y el click se resuelve con las mismas coordenadas.
+
 
 ```java
 public class Opciones {
@@ -4929,14 +5052,15 @@ private void manejarMouse(Entrada entrada) {
 private void dibujarFila(Graphics2D g, int indice, String nombre, String valor) {
     int y = Y_FILA + indice * SEPARACION;
     boolean elegida = indice == fila;
-    Color color = elegida ? Paleta.ORO : Paleta.HUESO;
     if (elegida) {
-        DibujoMedieval.flecha(g, X_FILA - 30, y - 9, 11 + Math.sin(tiempo * 8) * 1.5);
+        flecha(g, X_FILA - 24, y - 8, false);
     }
-    TextoPixel.izquierda(g, nombre, X_FILA, y, 26, color);
-    TextoPixel.centrado(g, "◀", X_FLECHA_IZQ, y, 26, color);
-    TextoPixel.centrado(g, valor, X_VALOR, y, 26, color);
-    TextoPixel.centrado(g, "▶", X_FLECHA_DER, y, 26, color);
+    TextoPixel.izquierda(g, nombre, X_FILA, y, 24, elegida ? Paleta.ORO : Paleta.HUESO);
+    if (elegida) {
+        flecha(g, X_FLECHA_IZQ, y - 8, true);
+        flecha(g, X_FLECHA_DER, y - 8, false);
+    }
+    TextoPixel.centrado(g, valor, X_VALOR, y, 24, Paleta.ORO);
 }
 ```
 
@@ -5075,6 +5199,7 @@ private void dibujarCuadro(Graphics g) {
     g2.fillRect(0, 0, panel.getWidth(), panel.getHeight());
     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
     g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+    g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
     g2.translate(escalado.getDesplazamientoX(), escalado.getDesplazamientoY());
     g2.scale(escalado.getFactor(), escalado.getFactor());
     g2.clipRect(0, 0, ANCHO_LOGICO, ALTO_LOGICO);
@@ -5193,6 +5318,93 @@ public final class Escalado {
 
 ---
 
+### 9.11.1 Ícono y puntero del mouse
+
+La ventana usa dos imágenes del equipo. El **ícono** (`src/ui/ico.png`) reemplaza al ícono de Java en la ventana y en la barra de tareas; el **puntero** (`src/ui/Puntero/mouse normal.png`) reemplaza a la flecha del sistema sobre el juego:
+
+```java
+private void configurarIcono() {
+    BufferedImage logo = ui.recortada(ImagenesUi.ICONO);
+    if (logo == null) {
+        return;
+    }
+    BufferedImage icono = new BufferedImage(128, 128, BufferedImage.TYPE_INT_ARGB);
+    Graphics2D g = icono.createGraphics();
+    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+    g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+    g.drawImage(logo, 0, 0, 128, 128, null);
+    g.dispose();
+    marco.setIconImage(icono);
+    // En algunos sistemas (macOS) el ícono de la barra de tareas se pone aparte; si no se puede, no pasa nada
+    try {
+        if (java.awt.Taskbar.isTaskbarSupported()
+                && java.awt.Taskbar.getTaskbar().isSupported(java.awt.Taskbar.Feature.ICON_IMAGE)) {
+            java.awt.Taskbar.getTaskbar().setIconImage(icono);
+        }
+    } catch (UnsupportedOperationException | SecurityException e) {
+        // Sin ícono de barra de tareas: se sigue con el de la ventana
+    }
+}
+```
+
+```java
+private void configurarPuntero() {
+    try {
+        BufferedImage original = ui.obtener(ImagenesUi.PUNTERO);
+        if (original == null) {
+            return;
+        }
+        Toolkit kit = Toolkit.getDefaultToolkit();
+        Dimension maximo = kit.getBestCursorSize(original.getWidth(), original.getHeight());
+        if (maximo.width <= 0 || maximo.height <= 0) {
+            System.err.println("ADVERTENCIA: el sistema no admite punteros personalizados. Se usa el puntero por defecto.");
+            return;
+        }
+        double factor = Math.min(1.0, Math.min((double) maximo.width / original.getWidth(),
+                (double) maximo.height / original.getHeight()));
+        int ancho = Math.max(1, (int) Math.round(original.getWidth() * factor));
+        int alto = Math.max(1, (int) Math.round(original.getHeight() * factor));
+
+        // Lienzo transparente del tamaño exacto que pide el sistema, con la imagen arriba a la izquierda
+        BufferedImage lienzo = new BufferedImage(maximo.width, maximo.height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = lienzo.createGraphics();
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2.drawImage(original, 0, 0, ancho, alto, null);
+        g2.dispose();
+
+        // El punto activo (el que "hace click") es la esquina superior izquierda
+        Image imagen = lienzo;
+        punteroPropio = kit.createCustomCursor(imagen, new Point(0, 0), "punteroJuego");
+        panel.setCursor(punteroPropio);
+    } catch (Exception e) {
+        System.err.println("No se pudo preparar el puntero personalizado: " + e.getMessage());
+    }
+}
+```
+
+- `configurarIcono` recorta el borde transparente de `ico.png` (`ImagenesUi.recortada`) y lo dibuja en un lienzo de 128×128 con interpolación de calidad. Además intenta ponerlo en la barra de tareas con `Taskbar`; si el sistema no lo permite, se sigue con el ícono de la ventana.
+- `configurarPuntero` pregunta al sistema cuál es el tamaño de puntero más grande que admite (`getBestCursorSize`; en Windows suele ser 32×32), achica la imagen **manteniendo la proporción** y la pone en un lienzo transparente de ese tamaño. El "punto activo" (donde cuenta el click) es la esquina superior izquierda. Si algo falla, se avisa por consola y se queda el puntero normal: **el juego nunca se cae por un recurso gráfico**.
+- Al dibujar cada cuadro (`dibujarCuadro`) se activa `KEY_INTERPOLATION = BILINEAR`, para que el arte se vea suave cuando la ventana lo agranda.
+
+
+## 10. El motor del kit (lo mínimo que hay que saber)
+
+El kit del profesor resuelve la ventana, el reloj y el teclado. Lo que hay que entender para leer las pantallas:
+
+- Una **`Escena`** es una pantalla. Las nuestras **extienden** `Escena` y escriben tres métodos:
+  - `alEntrar()`: se ejecuta una vez al abrir la escena (opcional).
+  - `actualizar(double dt)`: se ejecuta **120 veces por segundo**; `dt` (1/120 s) es el tiempo transcurrido. Acá se lee la entrada y se actualiza el estado.
+  - `dibujar(Graphics2D g)`: se ejecuta para pintar el cuadro. **Solo dibuja**, no cambia el estado.
+- `getEntrada()` da acceso al teclado y al mouse:
+  - `fuePresionada(tecla)`: `true` **solo en el cuadro en que se apretó** (para acciones de una sola vez: elegir, confirmar).
+  - `estaPresionada(tecla)`: `true` mientras se mantiene apretada (para movimiento continuo).
+  - `huboClick()`, `getMouseX()`, `getMouseY()`.
+- `getContexto().irA(otraEscena)`: cambia de pantalla. El cambio se hace al **comienzo del próximo paso**, no de inmediato.
+- `getContexto().salir()`: cierra el juego.
+
+Como las escenas solo dependen de `Escena` y `Entrada`, **se pueden probar sin ventana**: `Motor` tiene `simular(segundos)` (avanza el reloj) y `capturar()` (dibuja en una imagen en memoria). Es lo que hace `PruebaJuego`.
+
 ## 11. `PruebaJuego`: cómo se prueba todo sin abrir la ventana
 
 `juego/pruebas/PruebaJuego.java` ejecuta **403 comprobaciones** automáticas. Se corre con `java -cp out juego.pruebas.PruebaJuego`. Imprime solo las que fallan y al final el total.
@@ -5242,7 +5454,7 @@ Qué cubren los grupos de pruebas:
 | `pruebasPantallas` | Las escenas con el motor sin ventana: teclas simuladas y `capturar()` |
 | `pruebasAventuraCompleta` | Un **jugador robot** juega 40 aventuras completas con **cada una de las 4 clases** |
 
-**El jugador robot:** elige caminos, decide eventos al azar, cura cuando le falta vida, usa el hechizo ofensivo más caro que pueda pagar, después el arma, después los puños y, si no le queda energía, se defiende. Juega los tres minijuegos con una puntería regular. Sirve para comprobar dos cosas: que **ninguna partida se traba** (siempre se puede avanzar) y que el juego **no es imposible ni trivial** (el robot gana algunas y pierde otras). Con él se ajustaron las cifras de los enemigos **y de las clases** (el arma del Caballero cuesta 7 de energía y la del Ladrón pega 150 % porque con las primeras cifras el Caballero ganaba casi siempre y el Ladrón nunca).
+**El jugador robot:** elige caminos, decide eventos al azar, cura cuando le falta vida, usa el hechizo ofensivo más caro que pueda pagar, después el arma, después los puños y, si no le queda energía, se defiende. Juega los tres minijuegos con una puntería regular. Sirve para comprobar dos cosas: que **ninguna partida se traba** (siempre se puede avanzar) y que el juego **no es imposible ni trivial** (el robot gana algunas y pierde otras). Con él se ajustaron las cifras de los enemigos **y de las clases** (el arma del Caballero cuesta 7 de energía y la del Pícaro pega 150 % porque con las primeras cifras el Caballero ganaba casi siempre y el Pícaro nunca).
 
 ---
 

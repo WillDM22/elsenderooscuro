@@ -1,10 +1,12 @@
 package juego.recursos;
 
 import estructuras.ListaEnlazada;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import juego.archivos.GestorArchivos;
 import juego.graficos.DibujoMedieval;
 import juego.graficos.GestorSprites;
+import juego.graficos.ImagenesUi;
 import juego.graficos.TextoPixel;
 import juego.opciones.Opciones;
 import juego.reglas.EventoNarrativo;
@@ -17,6 +19,7 @@ public class Recursos {
     // Atributos
     private final GestorArchivos archivos;
     private final GestorSprites sprites;
+    private final ImagenesUi ui = new ImagenesUi();
     private final ListaEnlazada<EventoNarrativo> eventos;
     private final Opciones opciones;
     private BufferedImage fondoBosque;
@@ -47,10 +50,20 @@ public class Recursos {
         return fondoBosque;
     }
 
-    // Fondo del mapa: se vuelve a dibujar solo si cambió la semilla (otra partida)
+    // Fondo del mapa: el muro del calabozo con los senderos y los claros. Se vuelve a dibujar solo si cambió la
+    // semilla (otra partida). Si falta la imagen del muro se usa el bosque dibujado por código.
     public BufferedImage getFondoMapa(MapaBosque mapa) {
         if (fondoMapa == null || semillaFondoMapa != mapa.getSemilla()) {
-            fondoMapa = DibujoMedieval.crearFondoMapa(sprites, mapa);
+            BufferedImage nuevo = new BufferedImage(MapaBosque.ANCHO, MapaBosque.ALTO, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = nuevo.createGraphics();
+            if (ui.dibujarEstirada(g, "Fondos/FondoMinimapa.png", 0, 0, MapaBosque.ANCHO, MapaBosque.ALTO)) {
+                DibujoMedieval.dibujarSenderosYClaros(g, mapa);
+                g.dispose();
+                fondoMapa = nuevo;
+            } else {
+                g.dispose();
+                fondoMapa = DibujoMedieval.crearFondoMapa(sprites, mapa);
+            }
             semillaFondoMapa = mapa.getSemilla();
         }
         return fondoMapa;
@@ -63,6 +76,11 @@ public class Recursos {
 
     public GestorSprites getSprites() {
         return sprites;
+    }
+
+    // Imágenes de la interfaz (menús, HUD, fondos, personajes)
+    public ImagenesUi getUi() {
+        return ui;
     }
 
     public Opciones getOpciones() {

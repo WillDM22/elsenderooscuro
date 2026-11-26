@@ -22,7 +22,7 @@ flowchart TD
     opciones["juego.opciones<br/>Opciones"]
     ventana["juego.ventana<br/>VentanaJuego, Escalado"]
     archivos["juego.archivos<br/>GestorArchivos"]
-    graficos["juego.graficos<br/>Sprites, DibujoMedieval"]
+    graficos["juego.graficos<br/>ImagenesUi, Fuentes, Personajes,<br/>TextoPixel, Sprites"]
     recursos["juego.recursos<br/>Recursos"]
     pantallas["juego.pantallas<br/>Escenas"]
     main["juego.Main"]
@@ -209,7 +209,7 @@ classDiagram
 
 ### 4.1 Las estadísticas y el combate
 
-Todo parte de tres números del `Jugador`, que dependen de su **clase** (Caballero 5/3/1, Mago 1/3/5, Druida 3/3/3, Ladrón 2/5/2) y crecen al derrotar enemigos: **Fuerza, Destreza e Inteligencia**. Las demás cifras son fórmulas simples de esos tres (ejemplos con 3/3/3):
+Todo parte de tres números del `Jugador`, que dependen de su **clase** (Caballero 5/3/1, Mago 1/3/5, Druida 3/3/3, Pícaro 2/5/2) y crecen al derrotar enemigos: **Fuerza, Destreza e Inteligencia**. Las demás cifras son fórmulas simples de esos tres (ejemplos con 3/3/3):
 
 | Fórmula (en `Jugador`) | Con 3/3/3 | Quién la usa |
 |---|---|---|
@@ -227,10 +227,10 @@ Dos recursos distintos se gastan en combate: el **maná** (hechizos) y la **ener
 
 El recorrido de **un turno del jugador** es:
 
-1. `EscenaCombate` muestra un menú estilo Pokémon (**Luchar**, **Magia**, **Defender**, **Huir**). Según lo elegido llama a `combate.elegirArma()`, `elegirPunos()`, `elegirHabilidad(i)`, `defender()` o `huir()`.
+1. `EscenaCombate` muestra un menú estilo Pokémon (**Luchar**, **Magia**, **Defender**, **Huir**; el botón de huir dice "Correr"). Según lo elegido llama a `combate.elegirArma()`, `elegirPunos()`, `elegirHabilidad(i)`, `defender()` o `huir()`.
 2. `Combate.iniciarAccion` mira que haya maná y energía suficientes y que no sea un escape contra el jefe. Gasta los costos.
 3. Si la habilidad `usaBarra()`, `crearMinijuego` elige **al azar** una barra (50 %), una ráfaga (25 %) o un anillo (25 %), pasándole la dificultad de la habilidad y el **nivel** (enemigos derrotados, tope 12: más nivel = más rápido y zonas más chicas). Ahí entra también la **Destreza**.
-4. La escena llama `combate.actualizar(dt)` en cada cuadro (el minijuego avanza) y, cuando se aprieta ESPACIO, `combate.pulsar()`.
+4. La escena llama `combate.actualizar(dt)` en cada cuadro (el minijuego avanza) y, cuando se aprieta ESPACIO o el click izquierdo, `combate.pulsar()`.
 5. El minijuego devuelve una `Calidad` (fallo, normal o crítico) y `Combate` llama `habilidad.aplicar(jugador, enemigo, calidad)`. Ahí entran **Fuerza** e **Inteligencia**.
 6. `Combate` saca de la **cola de turnos** al jugador (`desencolar`), le cobra el **veneno** si lo tiene y mira el frente: si es el enemigo, queda en estado `TURNO_ENEMIGO`.
 7. El enemigo ataca (`enemigo.atacar(jugador)`), el jugador recibe el daño reducido por la **Defensa** (y a la mitad si se defendió) y se vuelve a mirar la cola. Si la cola quedó vacía, se arma una ronda nueva.
@@ -268,7 +268,7 @@ DERROTADOS=2
 NODO_ACTUAL=6
 HABILIDADES=FURIA,CURACION
 RUTA=0,2,6
-REGISTRO=0|Entras al Sendero Oscuro.
+REGISTRO=0|Entras a Solis Umbra.
 REGISTRO=2|Piso 1: llegas a Combate.
 REGISTRO=2|Derrotaste a Lobo.
 REGISTRO=6|Piso 2: llegas a Evento.
@@ -301,8 +301,8 @@ OPCION|texto del botón|EFECTO:valor;EFECTO:valor|texto del resultado
 | Sin `ArrayList`, `Stack`, `Queue` ni arreglos propios | Auditado con `grep`: de `java.util` solo se usa `Random` |
 | Sin lambdas ni streams | Auditado con `grep` (las únicas lambdas están en el kit: `Ventana`, `VerificadorEstructuras`) |
 | Al menos una librería propia | Paquete `estructuras` (4 estructuras genéricas, con interfaces) y `utilidades.Tokenizador` |
-| Pixel-art medieval sin archivos externos | `juego.graficos`: sprites hechos con texto y Graphics2D |
-| Cargador de sprites con `assets/` y respaldo | `GestorSprites` |
+| Pixel-art medieval | Arte propio del equipo en `src/ui` (cargado por `ImagenesUi`, `Fuentes`, `Personajes`); respaldo con sprites hechos con texto y Graphics2D en `juego.graficos` |
+| Cargador de imágenes con respaldo (si falta un archivo no se cae) | `ImagenesUi`, `GestorSprites` |
 | Personaje humano con Fuerza, Destreza, Inteligencia y hasta 4 hechizos (con 4 clases a elegir) | `Jugador`, `Clase`, `Habilidad*` |
 | Mapa ramificado con Combate, Cofre, `?` y Jefe | `MapaBosque`, `TipoNodo`, `EscenaMapa` |
 | Minijuegos de precisión estilo Undertale (barra, ráfaga, anillo) con efecto de la Destreza y dificultad creciente | `Minijuego`, `BarraPrecision`, `MinijuegoRafaga`, `MinijuegoAnillo`, `Dificultad`, `EscenaCombate.dibujarMinijuego` |

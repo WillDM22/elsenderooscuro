@@ -544,7 +544,7 @@ public class PruebaJuego {
         Jugador caballero = new Jugador(Clase.CABALLERO);
         comprobar("caballero: 5/3/1, vida 45 y maná 9", caballero.getFuerza() == 5 && caballero.getDestreza() == 3
                 && caballero.getInteligencia() == 1 && caballero.getVidaMaxima() == 45 && caballero.getManaMaximo() == 9);
-        comprobar("caballero: empieza con Tajo heroico", caballero.conoceHabilidad("FURIA") && caballero.cantidadHabilidades() == 1);
+        comprobar("caballero: empieza con Tajo Heroico", caballero.conoceHabilidad("FURIA") && caballero.cantidadHabilidades() == 1);
         Jugador mago = new Jugador(Clase.MAGO);
         comprobar("mago: 1/3/5, vida 25 y maná 21", mago.getVidaMaxima() == 25 && mago.getManaMaximo() == 21 && mago.conoceHabilidad("GOLPE"));
         Jugador ladron = new Jugador(Clase.LADRON);

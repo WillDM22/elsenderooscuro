@@ -3,7 +3,7 @@
     "configurations": [
         {
             "type": "java",
-            "name": "El Sendero Oscuro (juego)",
+            "name": "Solis Umbra (juego)",
             "request": "launch",
             "mainClass": "juego.Main",
             "projectName": "",

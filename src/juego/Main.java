@@ -11,6 +11,6 @@ public class Main {
     // están en la raíz del proyecto.
     public static void main(String[] args) {
         Recursos recursos = new Recursos("datos", "assets");
-        VentanaJuego.abrir("El Sendero Oscuro", recursos.getOpciones(), new EscenaMenu(recursos));
+        VentanaJuego.abrir("Solis Umbra", recursos.getOpciones(), new EscenaMenu(recursos));
     }
 }

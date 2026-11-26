@@ -1,13 +1,13 @@
-# Roles y acta de contrato (Solo Dev)
+# Roles y acta de contrato
 
-El enunciado reparte el trabajo en cuatro módulos para equipos de 3 o 4 personas. Al trabajar solo, William es dueño de los cuatro.
+El trabajo se reparte en cuatro módulos. El equipo los comparte y todos responden por el proyecto completo.
 
 | Rol | Paquete | Qué programa | Responsable |
 |---|---|---|---|
-| A. Entidades | `juego.entidades` | `Jugador`, `Clase` (enum), `EstadoVeneno`; `Habilidad` (abstracta) y `HabilidadArma`, `HabilidadPunos`, `HabilidadCuracion`, `HabilidadGolpePotente`, `HabilidadEscape`, `HabilidadFuria`, `HabilidadSavia`, `HabilidadVeneno`; `CatalogoHabilidades`; `Enemigo` (abstracta) y `Esqueleto`, `Lobo`, `Goblin`, `Arana`, `Brujo`, `Espectro`, `Golem`, `ReyOscuro`; `FabricaEnemigos`; `Calidad` | William |
-| B. Estructuras | `estructuras`, `utilidades` | `ListaEnlazada`, `PilaEnlazada`, `ColaEnlazada`, `Grafo` (hasta pasar el verificador) y el `Tokenizador` | William |
-| C. Reglas | `juego.reglas`, `juego.archivos` | `Combate`, `Minijuego`, `BarraPrecision`, `MinijuegoRafaga`, `MinijuegoAnillo`, `Dificultad`, `MapaBosque`, `NodoMapa`, `TipoNodo`, `Partida`, `Registro`, `EventoNarrativo`, `OpcionEvento`, `EfectoEvento`, `GestorArchivos` | William |
-| D. Pantalla | `juego.pantallas`, `juego.graficos`, `juego.recursos`, `juego.opciones`, `juego.ventana` | `EscenaMenu`, `EscenaClases`, `EscenaOpciones`, `EscenaMapa`, `EscenaEvento`, `EscenaCombate`, `EscenaFin`, `Hud`, `Adornos`; `Paleta`, `Sprite`, `CatalogoSprites`, `GestorSprites`, `TextoPixel`, `DibujoMedieval`; `Recursos`; `Opciones`; `VentanaJuego`, `Escalado` | William |
+| A. Entidades | `juego.entidades` | `Jugador`, `Clase` (enum), `EstadoVeneno`; `Habilidad` (abstracta) y `HabilidadArma`, `HabilidadPunos`, `HabilidadCuracion`, `HabilidadGolpePotente`, `HabilidadEscape`, `HabilidadFuria`, `HabilidadSavia`, `HabilidadVeneno`; `CatalogoHabilidades`; `Enemigo` (abstracta) y `Esqueleto`, `Lobo`, `Goblin`, `Arana`, `Brujo`, `Espectro`, `Golem`, `ReyOscuro`; `FabricaEnemigos`; `Calidad` | Equipo |
+| B. Estructuras | `estructuras`, `utilidades` | `ListaEnlazada`, `PilaEnlazada`, `ColaEnlazada`, `Grafo` (hasta pasar el verificador) y el `Tokenizador` | Equipo |
+| C. Reglas | `juego.reglas`, `juego.archivos` | `Combate`, `Minijuego`, `BarraPrecision`, `MinijuegoRafaga`, `MinijuegoAnillo`, `Dificultad`, `MapaBosque`, `NodoMapa`, `TipoNodo`, `Partida`, `Registro`, `EventoNarrativo`, `OpcionEvento`, `EfectoEvento`, `GestorArchivos` | Equipo |
+| D. Pantalla | `juego.pantallas`, `juego.graficos`, `juego.recursos`, `juego.opciones`, `juego.ventana` | `EscenaMenu`, `EscenaClases`, `EscenaOpciones`, `EscenaMapa`, `EscenaEvento`, `EscenaCombate`, `EscenaFin`, `Hud`, `Adornos`; `Paleta`, `Sprite`, `CatalogoSprites`, `GestorSprites`, `TextoPixel`, `DibujoMedieval`, `ImagenesUi`, `Fuentes`, `Personajes`; `Recursos`; `Opciones`; `VentanaJuego`, `Escalado` | Equipo |
 
 Además, en cada rol se cubren las tareas de testing (`PruebaJuego`) y documentación.
 
@@ -35,6 +35,9 @@ Una fila por cada clase que un módulo le pide a otro, con su constructor y los 
 | `EventoNarrativo`, `OpcionEvento`, `EfectoEvento` | C | `(titulo, relato, opciones)`, `(texto, resultado, efectos)`, `(tipo, valor, texto)` | `getOpcion`, `puedeElegir`, `aplicar`, `getEmboscada` |
 | `GestorArchivos` | C | `GestorArchivos(carpeta)` | `guardar`, `cargar`, `existeGuardado`, `borrarGuardado`, `guardarOpciones`, `cargarOpciones`, `cargarEventos`, `interpretarEventos` |
 | `Opciones` | D | `Opciones()` | `getResolucion`, `esPantallaCompleta`, `getFactorVentana`, `getNombreResolucion`, `getBrillo`, `getTexto`, `cambiarResolucion`, `cambiarBrillo`, `cambiarTexto`, `getEscalaTexto` |
-| `Recursos` | D | `Recursos(carpetaDatos, carpetaAssets)` | `getArchivos`, `getSprites`, `getEventos`, `getOpciones`, `aplicarOpciones`, `getFondoBosque`, `getFondoMapa` |
+| `Recursos` | D | `Recursos(carpetaDatos, carpetaAssets)` | `getArchivos`, `getSprites`, `getEventos`, `getOpciones`, `aplicarOpciones`, `getFondoBosque`, `getFondoMapa`, `getUi` |
+| `ImagenesUi` | D | `ImagenesUi()` | `existe`, `obtener`, `dibujar`, `dibujarCentrado`, `dibujarEstirada`, `dibujarVisibleEstirada`, `dibujarSinFilas`, `dibujarPersonaje`, `recortada`, `anchoVisible`, `altoVisible` |
+| `Fuentes` | D | (estática) | `cuerpo(tamanio)`, `titulo(tamanio)`, `respaldo(tamanio)` |
+| `Personajes` | D | (estática) | `ruta`, `alturaDePies`, `dibujar(ui, g, sprite, pose, cx, ypies)` |
 | `GestorSprites` | D | `GestorSprites(carpetaAssets)` | `obtener(nombre, escala)`, `dibujar`, `tieneArchivo` |
 | Escenas | D | `EscenaMenu(recursos)`, `EscenaClases(recursos)`, `EscenaOpciones(recursos, anterior)`, `EscenaMapa(recursos, partida, autoguardar)`, `EscenaEvento(recursos, partida, evento, esCofre)`, `EscenaCombate(recursos, partida, enemigo, esJefe)`, `EscenaFin(recursos, partida, victoria)` | `actualizar(dt)`, `dibujar(g)` |

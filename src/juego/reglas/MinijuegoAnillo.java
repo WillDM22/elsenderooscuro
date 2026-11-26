@@ -83,7 +83,7 @@ public class MinijuegoAnillo extends Minijuego {
 
     @Override
     public String getInstruccion() {
-        return "¡ESPACIO cuando el anillo toque la marca!";
+        return "¡ESPACIO o CLICK IZQ cuando el anillo toque la marca!";
     }
 
     public double getDuracion() {

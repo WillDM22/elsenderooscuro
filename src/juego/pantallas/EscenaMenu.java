@@ -5,8 +5,7 @@ import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;
 import juego.recursos.Recursos;
 import juego.archivos.GestorArchivos;
-import juego.graficos.CatalogoSprites;
-import juego.graficos.DibujoMedieval;
+import juego.graficos.ImagenesUi;
 import juego.graficos.Paleta;
 import juego.graficos.TextoPixel;
 import juego.reglas.Partida;
@@ -24,9 +23,14 @@ public class EscenaMenu extends Escena {
     private static final int CANTIDAD = 4;
     private static final int ANCHO = 1024;
     private static final int ALTO = 640;
-    private static final int X_MENU = 360;
-    private static final int Y_MENU = 360;
-    private static final int SEPARACION = 54;
+    // Los botones forman una grilla de 2 columnas x 2 filas: Nueva partida / Continuar a la izquierda,
+    // Opciones / Salir a la derecha. Se ubican por su centro.
+    private static final int CENTRO_X_IZQUIERDA = 307;
+    private static final int CENTRO_X_DERECHA = 710;
+    private static final int CENTRO_Y_ARRIBA = 355;
+    private static final int CENTRO_Y_ABAJO = 448;
+    private static final int ANCHO_BOTON = 298;
+    private static final int ALTO_BOTON = 91;
 
     // Atributos
     private final Recursos recursos;
@@ -62,6 +66,11 @@ public class EscenaMenu extends Escena {
         if (entrada.fuePresionada(KeyEvent.VK_DOWN) || entrada.fuePresionada(KeyEvent.VK_S)) {
             seleccion = (seleccion + 1) % CANTIDAD;
         }
+        // ← → pasan de la columna izquierda a la derecha (y al revés) en la misma fila
+        if (entrada.fuePresionada(KeyEvent.VK_LEFT) || entrada.fuePresionada(KeyEvent.VK_A)
+                || entrada.fuePresionada(KeyEvent.VK_RIGHT) || entrada.fuePresionada(KeyEvent.VK_D)) {
+            seleccion = (seleccion + 2) % CANTIDAD;
+        }
 
         // Mouse: pasar por encima selecciona, hacer click confirma
         for (int i = 0; i < CANTIDAD; i++) {
@@ -81,10 +90,18 @@ public class EscenaMenu extends Escena {
         }
     }
 
+    // Posición (centro) de cada botón: la columna depende del índice (0 y 1 a la izquierda, 2 y 3 a la derecha)
+    private int centroX(int indice) {
+        return indice < 2 ? CENTRO_X_IZQUIERDA : CENTRO_X_DERECHA;
+    }
+
+    private int centroY(int indice) {
+        return indice % 2 == 0 ? CENTRO_Y_ARRIBA : CENTRO_Y_ABAJO;
+    }
+
     private boolean estaSobreOpcion(Entrada entrada, int indice) {
-        int y = Y_MENU + indice * SEPARACION;
-        return entrada.getMouseX() >= X_MENU && entrada.getMouseX() <= X_MENU + 300
-                && entrada.getMouseY() >= y - 30 && entrada.getMouseY() <= y + 12;
+        return Math.abs(entrada.getMouseX() - centroX(indice)) <= ANCHO_BOTON / 2
+                && Math.abs(entrada.getMouseY() - centroY(indice)) <= ALTO_BOTON / 2;
     }
 
     private void confirmar() {
@@ -108,47 +125,38 @@ public class EscenaMenu extends Escena {
 
     @Override
     public void dibujar(Graphics2D g) {
-        g.drawImage(recursos.getFondoBosque(), 0, 0, null);
-        g.setColor(new Color(0, 0, 0, 90));
-        g.fillRect(0, 0, ANCHO, ALTO);
-
-        Adornos.antorcha(g, recursos, 150, 330, tiempo, 0);
-        Adornos.antorcha(g, recursos, ANCHO - 150, 330, tiempo, 2);
-
-        // Título
-        TextoPixel.centrado(g, "EL SENDERO", ANCHO / 2.0, 100, 56, Paleta.ORO);
-        TextoPixel.centrado(g, "OSCURO", ANCHO / 2.0, 160, 56, Paleta.ORO);
-        TextoPixel.centrado(g, "Un roguelike de decisiones", ANCHO / 2.0, 196, 18, Paleta.PERGAMINO);
-
-        // Héroe flotando suavemente a la izquierda y calavera a la derecha
-        double flota = Math.sin(tiempo * 2.2) * 6;
-        DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(CatalogoSprites.CABALLERO, 8), 190, 420 + flota);
-        DibujoMedieval.dibujarConSombra(g, recursos.getSprites().obtener(CatalogoSprites.REY, 8), ANCHO - 190, 420 - flota);
-
-        // Opciones
-        DibujoMedieval.cuadroDialogo(g, X_MENU - 60, Y_MENU - 56, 420, 244);
-        boolean hayGuardado = recursos.getArchivos().existeGuardado();
-        for (int i = 0; i < CANTIDAD; i++) {
-            Color color = Paleta.HUESO;
-            if (i == CONTINUAR && !hayGuardado) {
-                color = Paleta.PIEDRA;
-            }
-            if (i == seleccion) {
-                color = Paleta.ORO;
-                DibujoMedieval.flecha(g, X_MENU - 30, Y_MENU + i * SEPARACION - 9, 11 + Math.sin(tiempo * 8) * 1.5);
-            }
-            TextoPixel.izquierda(g, nombreOpcion(i), X_MENU, Y_MENU + i * SEPARACION, 28, color);
+        ImagenesUi ui = recursos.getUi();
+        // Fondo (una captura con borde de ventana: se le sacan 2 px por lado y se estira a toda la pantalla)
+        if (!ui.dibujarVisibleEstirada(g, "MenuTitulo/Fondo.png", 0, 0, ANCHO, ALTO, 2)) {
+            g.setColor(Paleta.NEGRO);
+            g.fillRect(0, 0, ANCHO, ALTO);
         }
 
-        TextoPixel.centrado(g, "↑ ↓ elegir    ENTER confirmar", ANCHO / 2.0, 604, 16, Paleta.PERGAMINO);
+        // Logo con un suave vaivén
+        double flota = Math.sin(tiempo * 1.6) * 3;
+        ui.dibujarCentrado(g, "MenuTitulo/Logo Juego.png", ANCHO / 2.0, 168 + flota);
+
+        // Botones: oscuros con rombos, amarillos el elegido y sin rombos "Continuar" si no hay partida guardada
+        boolean hayGuardado = recursos.getArchivos().existeGuardado();
+        for (int i = 0; i < CANTIDAD; i++) {
+            String estado = "Activo";
+            if (i == seleccion) {
+                estado = "Hold";
+            } else if (i == CONTINUAR && !hayGuardado) {
+                estado = "Normal";
+            }
+            ui.dibujarCentrado(g, "MenuTitulo/" + archivoDe(i) + estado + ".png", centroX(i), centroY(i));
+        }
+
         if (tiempoAviso > 0) {
-            TextoPixel.centrado(g, aviso, ANCHO / 2.0, 580, 18, new Color(255, 120, 100));
+            TextoPixel.centrado(g, aviso, ANCHO / 2.0, 590, 20, new Color(255, 140, 120));
         }
     }
 
-    private String nombreOpcion(int i) {
+    // Primera parte del nombre de los archivos de cada botón
+    private String archivoDe(int i) {
         if (i == NUEVA) {
-            return "Nueva partida";
+            return "NJuego";
         }
         if (i == CONTINUAR) {
             return "Continuar";

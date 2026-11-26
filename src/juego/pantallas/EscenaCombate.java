@@ -2,17 +2,19 @@ package juego.pantallas;
 
 import estructuras.ColaEnlazada;
 import estructuras.ListaEnlazada;
+import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;
-import java.awt.image.BufferedImage;
 import java.util.Random;
 import juego.entidades.Calidad;
 import juego.entidades.Enemigo;
 import juego.entidades.Habilidad;
 import juego.entidades.Jugador;
-import juego.graficos.DibujoMedieval;
+import juego.graficos.ImagenesUi;
 import juego.graficos.Paleta;
+import juego.graficos.Personajes;
 import juego.graficos.TextoPixel;
 import juego.recursos.Recursos;
 import juego.reglas.BarraPrecision;
@@ -77,6 +79,8 @@ public class EscenaCombate extends Escena {
     private double esperaEnemigo;
     private double sacudidaEnemigo;
     private double sacudidaJugador;
+    private double ataqueEnemigo;
+    private double ataqueJugador;
     private int vidaEnemigoPrevia;
     private int vidaJugadorPrevia;
     private String mejora;
@@ -149,24 +153,37 @@ public class EscenaCombate extends Escena {
         return partida.getJugador().cantidadHabilidades() + 1;
     }
 
-    // Posición de cada fila. El menú principal es una grilla de 2x2; los submenús son listas verticales.
+    // Posición de cada fila. El menú principal son 4 botones en grilla de 2x2 (imágenes de 222 x 85);
+    // los submenús son listas verticales escritas sobre el panel, a la derecha.
+    private static final int BOTON_X = 549;
+    private static final int BOTON_Y = 444;
+    private static final int BOTON_ANCHO = 222;
+    private static final int BOTON_ALTO = 85;
+    private static final int LISTA_X = 600;
+    private static final int LISTA_Y = 478;
+    private static final int LISTA_SEPARACION = 34;
+
     private int xItem(int i) {
         if (menu == PRINCIPAL) {
-            return 560 + (i % 2) * 215;
+            return BOTON_X + (i % 2) * 228;
         }
-        return 580;
+        return LISTA_X;
     }
 
     private int yItem(int i) {
         if (menu == PRINCIPAL) {
-            return 505 + (i / 2) * 56;
+            return BOTON_Y + (i / 2) * 89;
         }
-        return 478 + i * 33;
+        return LISTA_Y + i * LISTA_SEPARACION;
     }
 
     private boolean estaSobreItem(Entrada entrada, int i) {
-        return Math.abs(entrada.getMouseX() - (xItem(i) + 100)) < 110
-                && Math.abs(entrada.getMouseY() - (yItem(i) - 8)) < 17;
+        if (menu == PRINCIPAL) {
+            return entrada.getMouseX() >= xItem(i) && entrada.getMouseX() <= xItem(i) + BOTON_ANCHO
+                    && entrada.getMouseY() >= yItem(i) && entrada.getMouseY() <= yItem(i) + BOTON_ALTO;
+        }
+        return entrada.getMouseX() >= LISTA_X - 40 && entrada.getMouseX() <= 1000
+                && Math.abs(entrada.getMouseY() - (yItem(i) - 8)) < LISTA_SEPARACION / 2;
     }
 
     private void manejarMenu(Entrada entrada) {
@@ -302,13 +319,15 @@ public class EscenaCombate extends Escena {
         Jugador jugador = partida.getJugador();
         if (enemigo.getVida() < vidaEnemigoPrevia) {
             sacudidaEnemigo = 0.4;
-            flotantes.agregar(new Flotante("-" + (vidaEnemigoPrevia - enemigo.getVida()), 740, 230, Paleta.ORO));
+            ataqueJugador = 0.7;
+            flotantes.agregar(new Flotante("-" + (vidaEnemigoPrevia - enemigo.getVida()), 715, 250, Paleta.ORO));
         }
         if (jugador.getVida() < vidaJugadorPrevia) {
             sacudidaJugador = 0.4;
-            flotantes.agregar(new Flotante("-" + (vidaJugadorPrevia - jugador.getVida()), 250, 260, new Color(255, 90, 90)));
+            ataqueEnemigo = 0.7;
+            flotantes.agregar(new Flotante("-" + (vidaJugadorPrevia - jugador.getVida()), 310, 270, new Color(255, 90, 90)));
         } else if (jugador.getVida() > vidaJugadorPrevia) {
-            flotantes.agregar(new Flotante("+" + (jugador.getVida() - vidaJugadorPrevia), 250, 260, new Color(120, 255, 140)));
+            flotantes.agregar(new Flotante("+" + (jugador.getVida() - vidaJugadorPrevia), 310, 270, new Color(120, 255, 140)));
         }
         vidaEnemigoPrevia = enemigo.getVida();
         vidaJugadorPrevia = jugador.getVida();
@@ -317,6 +336,8 @@ public class EscenaCombate extends Escena {
     private void actualizarFlotantes(double dt) {
         sacudidaEnemigo = Math.max(0, sacudidaEnemigo - dt);
         sacudidaJugador = Math.max(0, sacudidaJugador - dt);
+        ataqueEnemigo = Math.max(0, ataqueEnemigo - dt);
+        ataqueJugador = Math.max(0, ataqueJugador - dt);
         int i = 0;
         while (i < flotantes.tamanio()) {
             Flotante f = flotantes.obtener(i);
@@ -333,9 +354,12 @@ public class EscenaCombate extends Escena {
     // Dibujo
     @Override
     public void dibujar(Graphics2D g) {
-        g.drawImage(recursos.getFondoBosque(), 0, 0, null);
-        g.setColor(new Color(0, 0, 20, 120));
-        g.fillRect(0, 0, ANCHO, 640);
+        ImagenesUi ui = recursos.getUi();
+        String fondo = combate.esJefe() ? "Fondos/FondoJefeFinal.png" : "Fondos/FondoDungeon.png";
+        if (!ui.dibujarEstirada(g, fondo, 0, 0, ANCHO, 640)) {
+            g.setColor(Paleta.NEGRO);
+            g.fillRect(0, 0, ANCHO, 640);
+        }
         Hud.dibujarFranja(g, recursos, partida.getJugador(), ANCHO, true);
 
         dibujarOrdenDeTurnos(g);
@@ -350,106 +374,170 @@ public class EscenaCombate extends Escena {
 
     // Cola de turnos: arriba se ve quién actúa ahora y quién sigue (la primera ficha es el frente de la COLA)
     private void dibujarOrdenDeTurnos(Graphics2D g) {
-        TextoPixel.izquierda(g, "Peligro " + combate.getNivel() + "/" + Dificultad.NIVEL_MAXIMO, 24, 104, 14, Paleta.PERGAMINO);
+        TextoPixel.izquierda(g, "Peligro " + combate.getNivel() + "/" + Dificultad.NIVEL_MAXIMO, 25, 152, 20, Paleta.ORO);
         ColaEnlazada<Integer> orden = combate.getOrdenDeTurnos();
-        TextoPixel.izquierda(g, "Turnos:", 640, 104, 14, Paleta.PERGAMINO);
-        int x = 720;
+        TextoPixel.izquierda(g, "Turnos:", 859, 152, 20, Paleta.ORO);
+        int x = 861;
         boolean primero = true;
         while (!orden.estaVacia()) {
             int quien = orden.desencolar();
-            Color color = quien == Combate.JUGADOR ? Paleta.AZUL : Paleta.ROJO;
-            g.setColor(Paleta.NEGRO);
-            g.fillOval(x - 3, 86, 28, 28);
+            Color color = quien == Combate.JUGADOR ? new Color(36, 150, 240) : new Color(226, 30, 30);
+            g.setColor(Paleta.ORO);
+            g.fillOval(x - 2, 164, 40, 40);
             g.setColor(color);
-            g.fillOval(x, 89, 22, 22);
+            g.fillOval(x, 166, 36, 36);
             if (primero) {
-                g.setColor(Paleta.ORO);
-                g.drawOval(x - 3, 86, 28, 28);
+                g.setColor(Color.WHITE);
+                g.drawOval(x - 2, 164, 39, 39);
                 primero = false;
             }
-            TextoPixel.izquierda(g, quien == Combate.JUGADOR ? "T" : "E", x + 6, 106, 14, Paleta.HUESO);
-            x = x + 36;
+            TextoPixel.tituloCentrado(g, quien == Combate.JUGADOR ? "T" : "E", x + 18, 192, 22, Color.WHITE);
+            x = x + 44;
         }
+    }
+
+    // Pose de un personaje según lo que le pasó hace un instante
+    private int poseDe(boolean muerto, double sacudida, double ataque) {
+        if (muerto) {
+            return Personajes.MUERTO;
+        }
+        if (sacudida > 0) {
+            return Personajes.DANIADO;
+        }
+        if (ataque > 0) {
+            return Personajes.ATAQUE;
+        }
+        return Personajes.NORMAL;
     }
 
     private void dibujarEnemigo(Graphics2D g) {
         Enemigo enemigo = combate.getEnemigo();
-        double flota = Math.sin(tiempo * 2.5) * 5;
-        double temblor = sacudidaEnemigo > 0 ? Math.sin(tiempo * 90) * 10 * sacudidaEnemigo / 0.4 : 0;
-        boolean muerto = enemigo.estaMuerto();
-        BufferedImage sprite = recursos.getSprites().obtener(enemigo.getSprite(), 10);
-        if (!muerto || (int) (tiempo * 10) % 2 == 0) {
-            DibujoMedieval.dibujarConSombra(g, sprite, 760 + temblor, 280 + flota);
+        ImagenesUi ui = recursos.getUi();
+        double flota = Math.sin(tiempo * 2.5) * 3;
+        double temblor = sacudidaEnemigo > 0 ? Math.sin(tiempo * 90) * 8 * sacudidaEnemigo / 0.4 : 0;
+        int pose = poseDe(enemigo.estaMuerto(), sacudidaEnemigo, ataqueEnemigo);
+        double pies = Personajes.alturaDePies(enemigo.getSprite()) + (pose == Personajes.NORMAL ? flota : 0);
+        if (!Personajes.dibujar(ui, g, enemigo.getSprite(), pose, 715 + temblor, pies)) {
+            // Respaldo: el dibujo de texto de siempre
+            g.drawImage(recursos.getSprites().obtener(enemigo.getSprite(), 10), 650, 200, null);
         }
-        TextoPixel.centrado(g, enemigo.getNombre(), 760, 134, 22, Paleta.HUESO);
-        DibujoMedieval.barra(g, 660, 144, 200, 14, enemigo.getVida(), enemigo.getVidaMaxima(), Paleta.ROJO, Paleta.ROJO_OSCURO);
-        TextoPixel.centrado(g, enemigo.getVida() + "/" + enemigo.getVidaMaxima(), 760, 156, 12, Paleta.HUESO);
+        TextoPixel.centrado(g, enemigo.getNombre(), 715, 152, 20, Paleta.ORO);
+        Hud.barraGrande(g, 630, 168, 171, 22, enemigo.getVida(), enemigo.getVidaMaxima(), new Color(250, 28, 28),
+                new Color(70, 10, 24), 14);
         if (enemigo.estaEnvenenado()) {
-            TextoPixel.centrado(g, "ENVENENADO", 760, 176, 13, new Color(130, 230, 90));
+            TextoPixel.centrado(g, "ENVENENADO", 715, 214, 15, new Color(130, 230, 90));
         }
     }
 
     private void dibujarHeroe(Graphics2D g) {
         Jugador jugador = partida.getJugador();
-        double flota = Math.sin(tiempo * 2.1 + 1) * 4;
-        double temblor = sacudidaJugador > 0 ? Math.sin(tiempo * 90) * 10 * sacudidaJugador / 0.4 : 0;
-        BufferedImage sprite = recursos.getSprites().obtener(jugador.getClase().getSprite(), 10);
-        DibujoMedieval.dibujarConSombra(g, sprite, 260 + temblor, 300 + flota);
+        ImagenesUi ui = recursos.getUi();
+        double flota = Math.sin(tiempo * 2.1 + 1) * 3;
+        double temblor = sacudidaJugador > 0 ? Math.sin(tiempo * 90) * 8 * sacudidaJugador / 0.4 : 0;
+        int pose = poseDe(jugador.estaMuerto(), sacudidaJugador, ataqueJugador);
+        double pies = Personajes.SUELO + (pose == Personajes.NORMAL ? flota : 0);
+        if (!Personajes.dibujar(ui, g, jugador.getClase().getSprite(), pose, 310 + temblor, pies)) {
+            g.drawImage(recursos.getSprites().obtener(jugador.getClase().getSprite(), 10), 230, 220, null);
+        }
         if (jugador.estaEnGuardia()) {
-            TextoPixel.centrado(g, "GUARDIA", 260, 395, 14, new Color(120, 170, 255));
+            TextoPixel.centrado(g, "GUARDIA", 310, 408, 16, new Color(120, 170, 255));
         }
         if (jugador.estaEnvenenado()) {
-            TextoPixel.centrado(g, "ENVENENADO", 260, 413, 13, new Color(130, 230, 90));
+            TextoPixel.centrado(g, "ENVENENADO", 310, 426, 15, new Color(130, 230, 90));
         }
     }
 
     private void dibujarPanelInferior(Graphics2D g) {
-        DibujoMedieval.cuadroDialogo(g, 8, 430, ANCHO - 16, 202);
+        ImagenesUi ui = recursos.getUi();
         int estado = combate.getEstado();
         if (estado == Combate.ELECCION) {
+            ui.dibujar(g, "GUIBatalla/ContenLogMenuBat.png", -9, 413);
             dibujarMenu(g);
-        } else if (estado == Combate.APUNTANDO) {
-            dibujarMinijuego(g, combate.getMinijuego());
         } else {
-            String texto = combate.getMensaje();
-            if (estado == Combate.TURNO_ENEMIGO) {
-                texto = combate.getEnemigo().getNombre() + " se prepara para atacar...";
-            }
-            if (estado == Combate.VICTORIA && mejora != null) {
-                texto = texto + " " + mejora;
-            }
-            int letras = (int) (tiempoTexto * LETRAS_POR_SEGUNDO);
-            TextoPixel.parrafoEscribiendo(g, texto, 40, 490, ANCHO - 90, 22, Paleta.HUESO, letras);
-            if (estado != Combate.TURNO_ENEMIGO && letras > texto.length()) {
-                TextoPixel.derecha(g, "ENTER ▶", ANCHO - 40, 612, 18, Paleta.ORO);
+            // Un solo panel ancho: el minijuego o el mensaje del combate
+            ui.dibujar(g, "GUIBatalla/ContenedorMiniJuego.png", -9, 414);
+            if (estado == Combate.APUNTANDO) {
+                dibujarMinijuego(g, combate.getMinijuego());
+            } else {
+                String texto = combate.getMensaje();
+                if (estado == Combate.TURNO_ENEMIGO) {
+                    texto = combate.getEnemigo().getNombre() + " se prepara para atacar...";
+                }
+                if (estado == Combate.VICTORIA && mejora != null) {
+                    texto = texto + " " + mejora;
+                }
+                int letras = (int) (tiempoTexto * LETRAS_POR_SEGUNDO);
+                TextoPixel.parrafoEscribiendo(g, texto, 58, 492, ANCHO - 120, 20, Paleta.HUESO, letras);
+                if (estado != Combate.TURNO_ENEMIGO && letras > texto.length()) {
+                    TextoPixel.derecha(g, "ENTER ▶", ANCHO - 50, 606, 18, Paleta.ORO);
+                }
             }
         }
     }
 
-    // Menú de dos niveles: a la izquierda el mensaje y la ayuda de la fila elegida; a la derecha las filas
+    // Menú de dos niveles: a la izquierda el mensaje y la ayuda de la fila elegida; a la derecha los botones (menú
+    // principal) o la lista de armas / hechizos
     private void dibujarMenu(Graphics2D g) {
         Jugador jugador = partida.getJugador();
+        ImagenesUi ui = recursos.getUi();
         String titulo = "¿Qué hará " + jugador.getClase().getNombre() + "?";
-        TextoPixel.izquierda(g, titulo, 34, 466, 20, Paleta.ORO);
-        TextoPixel.parrafo(g, combate.getMensaje(), 34, 496, 500, 16, Paleta.HUESO);
-        TextoPixel.parrafo(g, ayudaDeLaFila(), 34, 570, 500, 15, Paleta.PERGAMINO);
+        TextoPixel.izquierda(g, titulo, 29, 474, 22, Paleta.ORO);
+        TextoPixel.parrafo(g, combate.getMensaje(), 29, 510, 500, 17, Paleta.HUESO);
+        TextoPixel.parrafoResaltado(g, ayudaDeLaFila(), 29, 566, 500, 17, Paleta.HUESO, Paleta.ORO);
 
         int n = cantidadItems();
         for (int i = 0; i < n; i++) {
             boolean activo = filaDisponible(i);
-            Color color = activo ? Paleta.HUESO : Paleta.PIEDRA;
-            if (i == seleccion) {
-                if (activo) {
-                    color = Paleta.ORO;
+            boolean elegido = i == seleccion;
+            if (menu == PRINCIPAL) {
+                String estado = elegido ? "Activo" : "Normal";
+                Composite anterior = g.getComposite();
+                if (!activo) {
+                    g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.45f));
                 }
-                DibujoMedieval.flecha(g, xItem(i) - 26, yItem(i) - 8, 10 + Math.sin(tiempo * 8) * 1.5);
+                ui.dibujar(g, "GUIBatalla/" + archivoDeBoton(i) + estado + ".png", xItem(i), yItem(i));
+                g.setComposite(anterior);
+            } else {
+                dibujarFilaDeLista(g, i, activo, elegido);
             }
-            int tamanio = menu == PRINCIPAL ? 24 : 20;
-            TextoPixel.izquierda(g, textoDeLaFila(i), xItem(i), yItem(i), tamanio, color);
         }
         if (menu != PRINCIPAL) {
-            TextoPixel.derecha(g, "ESC volver", ANCHO - 30, 620, 13, Paleta.PERGAMINO);
+            TextoPixel.derecha(g, "ESC volver", 990, 615, 14, Paleta.PERGAMINO);
         }
+    }
+
+    // Una fila de la lista de armas / hechizos: flecha dorada si está elegida, y el texto
+    private void dibujarFilaDeLista(Graphics2D g, int i, boolean activo, boolean elegido) {
+        ImagenesUi ui = recursos.getUi();
+        int y = yItem(i);
+        Color color = activo ? Paleta.HUESO : Paleta.PIEDRA;
+        if (elegido) {
+            color = activo ? Paleta.ORO : Paleta.PIEDRA_CLARA;
+            ui.dibujarCentrado(g, "GUIBatalla/BotonSeleccion.png", LISTA_X - 16 + Math.sin(tiempo * 8) * 2, y - 9);
+        }
+        String texto = textoDeLaFila(i);
+        boolean esVolver = texto.startsWith("◀");
+        if (esVolver) {
+            ui.dibujar(g, "GUIBatalla/IcoVolver_1.png", LISTA_X + 4, y - 20);
+            texto = "Volver";
+            TextoPixel.izquierda(g, texto, LISTA_X + 42, y, 20, color);
+        } else {
+            TextoPixel.izquierda(g, texto, LISTA_X + 6, y, 20, color);
+        }
+    }
+
+    // Primera parte del nombre del archivo de cada botón del menú principal
+    private String archivoDeBoton(int i) {
+        if (i == OP_LUCHAR) {
+            return "Luchar";
+        }
+        if (i == OP_MAGIA) {
+            return "Magia";
+        }
+        if (i == OP_DEFENDER) {
+            return "Def";
+        }
+        return "Correr";
     }
 
     private String textoDeLaFila(int i) {
@@ -540,7 +628,7 @@ public class EscenaCombate extends Escena {
 
     // Cada minijuego se dibuja distinto; la escena pregunta el tipo (sin instanceof) y pide el objeto del tipo correcto
     private void dibujarMinijuego(Graphics2D g, Minijuego minijuego) {
-        TextoPixel.centrado(g, minijuego.getInstruccion(), ANCHO / 2.0, 462, 20, Paleta.ORO);
+        TextoPixel.centradoResaltado(g, minijuego.getInstruccion(), ANCHO / 2.0, 487, 22, Paleta.HUESO, Paleta.ORO);
         if (minijuego.getTipo() == Minijuego.TIPO_BARRA) {
             dibujarBarra(g, combate.getBarra());
         } else if (minijuego.getTipo() == Minijuego.TIPO_RAFAGA) {
@@ -553,7 +641,7 @@ public class EscenaCombate extends Escena {
     // La barra de precisión estilo Undertale: zona normal, zona crítica central y cursor
     private void dibujarBarra(Graphics2D g, BarraPrecision barra) {
         int x = (ANCHO - (int) BarraPrecision.ANCHO) / 2;
-        int y = 510;
+        int y = 534;
         int alto = 56;
         g.setColor(Paleta.NEGRO);
         g.fillRect(x - 5, y - 5, (int) BarraPrecision.ANCHO + 10, alto + 10);
@@ -578,7 +666,7 @@ public class EscenaCombate extends Escena {
     // Ráfaga: una barra que se llena con cada golpe, con marcas para "normal" y "crítico", y el tiempo que queda
     private void dibujarRafaga(Graphics2D g, MinijuegoRafaga rafaga) {
         int x = 212;
-        int y = 500;
+        int y = 518;
         int ancho = 600;
         int alto = 44;
         g.setColor(Paleta.NEGRO);
@@ -598,9 +686,9 @@ public class EscenaCombate extends Escena {
         // Tiempo restante
         double resto = rafaga.getTiempoRestante() / MinijuegoRafaga.DURACION;
         g.setColor(Paleta.NEGRO);
-        g.fillRect(x - 3, 598, ancho + 6, 16);
+        g.fillRect(x - 3, 604, ancho + 6, 16);
         g.setColor(new Color(90, 150, 220));
-        g.fillRect(x, 601, (int) (ancho * resto), 10);
+        g.fillRect(x, 607, (int) (ancho * resto), 10);
     }
 
     // Anillo: el anillo blanco se achica hacia la marca dorada (la zona crítica es el borde rojo de la marca).
@@ -608,7 +696,7 @@ public class EscenaCombate extends Escena {
     private void dibujarAnillo(Graphics2D g, MinijuegoAnillo anillo) {
         double escala = 0.6;
         int cx = ANCHO / 2;
-        int cy = 545;
+        int cy = 556;
         double rObjetivo = MinijuegoAnillo.RADIO_OBJETIVO * escala;
         double rNormal = anillo.getToleranciaNormal() * escala;
         double rCritico = anillo.getToleranciaCritica() * escala;

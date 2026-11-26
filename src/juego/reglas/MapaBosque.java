@@ -16,8 +16,8 @@ public class MapaBosque {
     public static final int PISOS = 7;
     private static final int MARGEN_X = 90;
     private static final int SEPARACION_X = 140;
-    private static final int ARRIBA = 150;
-    private static final int ABAJO = 530;
+    private static final int ARRIBA = 172;
+    private static final int ABAJO = 492;
 
     // Atributos
     private final long semilla;

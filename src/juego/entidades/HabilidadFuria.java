@@ -8,7 +8,7 @@ public class HabilidadFuria extends Habilidad {
 
     // Constructor
     public HabilidadFuria() {
-        super(CODIGO, "Tajo heroico", 4);
+        super(CODIGO, "Tajo Heroico", 4);
     }
 
     @Override

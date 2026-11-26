@@ -10,7 +10,7 @@ public enum Clase {
             HabilidadGolpePotente.CODIGO, "Frágil, con mucho maná. Su bastón recarga el maná."),
     DRUIDA("Druida", "druida", 3, 3, 3, "Bastón de roble", 4, 100, 2, 2,
             HabilidadSavia.CODIGO, "Equilibrado: pega y se cura con la savia del bosque."),
-    LADRON("Ladrón", "ladron", 2, 5, 2, "Dagas", 3, 150, 3, 2,
+    LADRON("Pícaro", "ladron", 2, 5, 2, "Dagas", 3, 150, 3, 2,
             HabilidadVeneno.CODIGO, "Ágil: barra más lenta, críticos x3 y veneno.");
 
     // Atributos de cada clase

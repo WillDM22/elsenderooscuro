@@ -257,35 +257,53 @@ public class EscenaMapa extends Escena {
     }
 
     private void dibujarPanelInferior(Graphics2D g) {
-        DibujoMedieval.cuadroDialogo(g, 8, 566, ANCHO - 16, 66);
-        String texto = "Piso " + partida.getNodoActualCompleto().getPiso() + " de " + (MapaBosque.PISOS - 1)
+        recursos.getUi().dibujar(g, "GUIBatalla/ContenedorMiniMap.png", -9, 512);
+        String indicacion = "Piso " + partida.getNodoActualCompleto().getPiso() + " de " + (MapaBosque.PISOS - 1)
                 + ". Elige tu camino.";
+        double x = 28;
         if (vecinos.estaVacia()) {
-            texto = "Estás frente al final del sendero.";
+            indicacion = "Estás frente al final del sendero.";
+            TextoPixel.izquierda(g, indicacion, x, 567, 22, Paleta.ORO);
         } else {
+            TextoPixel.izquierda(g, indicacion, x, 567, 22, Paleta.ORO);
+            x = x + TextoPixel.anchoDe(g, indicacion, 22) + 12;
             NodoMapa destino = partida.getMapa().getNodo(vecinos.obtener(seleccion));
-            texto = texto + "  Destino: " + pista(destino.getTipo());
+            TextoPixel.izquierda(g, "Destino: " + pista(destino.getTipo()), x, 567, 22, Paleta.HUESO);
         }
-        TextoPixel.izquierda(g, texto, 28, 596, 16, Paleta.HUESO);
-        TextoPixel.izquierda(g, "↑↓ elegir   ENTER avanzar   H diario   G guardar   O opciones   ESC menú", 28, 620, 14, Paleta.PERGAMINO);
+        // Teclas: la tecla en dorado y lo que hace en blanco
+        double xt = 28;
+        xt = tecla(g, xt, "↑↓", "elegir");
+        xt = tecla(g, xt, "ENTER", "avanzar");
+        xt = tecla(g, xt, "H", "diario");
+        xt = tecla(g, xt, "G", "guardar");
+        xt = tecla(g, xt, "O", "opciones");
+        tecla(g, xt, "ESC", "menú");
         if (tiempoAviso > 0) {
-            TextoPixel.derecha(g, aviso, ANCHO - 28, 596, 15, Paleta.ORO);
+            TextoPixel.derecha(g, aviso, ANCHO - 28, 608, 17, Paleta.ORO);
         }
+    }
+
+    // Escribe "TECLA acción" (la tecla en dorado) desde x y devuelve dónde empieza la siguiente indicación
+    private double tecla(Graphics2D g, double x, String tecla, String accion) {
+        TextoPixel.izquierda(g, tecla, x, 608, 17, Paleta.ORO);
+        double despues = x + TextoPixel.anchoDe(g, tecla, 17) + 6;
+        TextoPixel.izquierda(g, accion, despues, 608, 17, Paleta.HUESO);
+        return despues + TextoPixel.anchoDe(g, accion, 17) + 26;
     }
 
     private void dibujarDiario(Graphics2D g) {
         g.setColor(new Color(0, 0, 0, 150));
         g.fillRect(0, 0, ANCHO, 640);
-        DibujoMedieval.marcoPergamino(g, 200, 90, 624, 400);
-        TextoPixel.centrado(g, "Diario de la aventura", ANCHO / 2.0, 138, 26, Paleta.MADERA_OSCURA, false);
+        recursos.getUi().dibujar(g, "MenuEventoAlea/ContenedorAlea.png", 167, 150);
+        TextoPixel.tituloCentrado(g, "Diario de la aventura", ANCHO / 2.0, 200, 30, Paleta.MADERA_OSCURA, false);
         // Las últimas entradas de la PILA (la más reciente primero)
-        ListaEnlazada<Registro> ultimos = partida.getUltimosRegistros(8);
-        double y = 182;
+        ListaEnlazada<Registro> ultimos = partida.getUltimosRegistros(7);
+        double y = 232;
         for (int i = 0; i < ultimos.tamanio(); i++) {
             Registro r = ultimos.obtener(i);
-            y = TextoPixel.parrafo(g, "• " + r.getTexto(), 232, y, 560, 16, Paleta.MADERA_OSCURA, false) + 4;
+            y = TextoPixel.parrafo(g, "• " + r.getTexto(), 205, y, 610, 15, Paleta.MADERA_OSCURA, false) + 1;
         }
-        TextoPixel.centrado(g, "H o ESC para cerrar", ANCHO / 2.0, 470, 14, Paleta.MADERA, false);
+        TextoPixel.centrado(g, "H o ESC para cerrar", ANCHO / 2.0, 408, 14, Paleta.MADERA, false);
     }
 
     // Auxiliares
